@@ -1,0 +1,2457 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AUREUS</title>
+<script src="https://cdn.jsdelivr.net/npm/ethers@6.9.1/dist/ethers.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700;800&family=Space+Mono&display=swap" rel="stylesheet">
+
+<!-- Firebase SDKs -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { getDatabase, ref, set, get, push, onValue, query, orderByChild, limitToLast } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  const APP_NAME = "AUREUS"; //  MUDE AQUI O NOME DO APP
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCZtBOSnssr9arBt6MK7I2CASOriG9JNDM",
+    authDomain: "a123-2222f.firebaseapp.com",
+    databaseURL: "https://a123-2222f-default-rtdb.firebaseio.com",
+    projectId: "a123-2222f",
+    storageBucket: "a123-2222f.firebasestorage.app",
+    messagingSenderId: "895806767001",
+    appId: "1:895806767001:web:9db84187e01ae868739d08",
+    measurementId: "G-C0B80WXGNB"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getDatabase(app);
+  window.auth = auth;
+  window.db = db;
+
+  // API KEYS
+  const COINGECKO_KEY = "CG-8o9D3j5kmHipYh4ayEFGXjDt";
+  const INFURA_KEY = "1f56a4faa8e2403da1ed011dc2895a2f";
+  const ETHERSCAN_KEY = "BFPQZAYYTHPSY8TASRYB9CRAWR2VBFAUCY"; // grátis
+  const UNISWAP_KEY = "w4zQO6VAv61XqjkUODTIbVg_350wByZfY_rPykfzVZc";
+
+  // ============================================================
+  // STATE
+  // ============================================================
+  let currentUser = null;
+  let walletAddress = null;
+  let walletMnemonic = null;
+  let encryptedWallet = null;
+  let wallet = null;
+  let walletPassword = null;
+  let currentNetwork = "ethereum";
+  let portfolioData = [];
+  let gasData = {};
+  let currentPage = "login";
+  let notificationPermission = false;
+
+  const NETWORKS = {
+    ethereum: { name: "Ethereum", chainId: 1, symbol: "ETH", rpc: `https://mainnet.infura.io/v3/${INFURA_KEY}`, explorer: "https://etherscan.io", color: "#627EEA" },
+    bsc: { name: "BNB Chain", chainId: 56, symbol: "BNB", rpc: "https://bsc-dataseed.binance.org/", explorer: "https://bscscan.com", color: "#F3BA2F" },
+    polygon: { name: "Polygon", chainId: 137, symbol: "MATIC", rpc: "https://polygon-rpc.com/", explorer: "https://polygonscan.com", color: "#8247E5" },
+    arbitrum: { name: "Arbitrum", chainId: 42161, symbol: "ETH", rpc: "https://arb1.arbitrum.io/rpc", explorer: "https://arbiscan.io", color: "#28A0F0" },
+  };
+
+  const TOKEN_CONTRACTS = {
+    ethereum: [
+      { symbol: 'USDT', address: '0xdAC17F958D2ee523a2206206994597C13D831ec7' },
+      { symbol: 'USDC', address: '0xA0b86991c6218b36c1d19d4a2e9eb0ce3606eb48' },
+      { symbol: 'DAI', address: '0x6B175474E89094C44Da98b954EedeAC495271d0F' }
+    ],
+    bsc: [
+      { symbol: 'BUSD', address: '0xe9e7cea3dedca5984780bafc599bd69add087d56' },
+      { symbol: 'CAKE', address: '0x0e09fabb73bd3ade0a17ecc321fd13a19e81ce82' },
+    ],
+    polygon: [
+      { symbol: 'USDT', address: '0x3813e82e6f7098b9583FC0F33a962D02018B6803' },
+      { symbol: 'USDC', address: '0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174' },
+    ]
+
+  };
+
+  // ============================================================
+  // UTILS
+  // ============================================================
+  function $(id) { return document.getElementById(id); }
+  window.$ = $;
+
+  function showPage(page) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const el = $(`page-${page}`);
+    if (el) { 
+      el.classList.add('active'); currentPage = page; 
+    }
+    document.querySelectorAll('.nav-item').forEach(n => {
+      n.classList.toggle('active', n.dataset.page === page);
+    });
+  }
+
+  function showToast(msg, type = "info") {
+    const t = document.createElement('div');
+    t.className = `toast toast-${type}`;
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.classList.add('show'), 10);
+    setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400); }, 3000);
+  }
+
+  function truncAddr(addr) { return addr ? `${addr.slice(0,6)}...${addr.slice(-4)}` : ""; }
+
+  function copyToClipboard(text) {
+    if (!text) return showToast("Nada para copiar", "error");
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => showToast("Copiado!", "success")).catch(() => {
+        // fallback below
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed'; ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); showToast('Copiado!', 'success'); } catch { showToast('Falha ao copiar', 'error'); }
+        ta.remove();
+      });
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed'; ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); showToast('Copiado!', 'success'); } catch { showToast('Falha ao copiar', 'error'); }
+      ta.remove();
+    }
+  }
+
+  function encryptText(text, key) {
+    return CryptoJS.AES.encrypt(text, key).toString();
+  }
+
+  function decryptText(cipher, key) {
+    try {
+      const bytes = CryptoJS.AES.decrypt(cipher, key);
+      const result = bytes.toString(CryptoJS.enc.Utf8);
+      return result || null;
+    } catch {
+      return null;
+    }
+  }
+
+  function openIndexedDB() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open('cryptoWalletDB', 1);
+      request.onupgradeneeded = (event) => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains('wallets')) db.createObjectStore('wallets', { keyPath: 'id' });
+      };
+      request.onsuccess = (event) => resolve(event.target.result);
+      request.onerror = (event) => reject(event.target.error);
+    });
+  }
+
+  async function saveWalletLocally(data) {
+    const db = await openIndexedDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('wallets', 'readwrite');
+      const store = tx.objectStore('wallets');
+      const req = store.put(data);
+      req.onsuccess = () => resolve();
+      req.onerror = (event) => reject(event.target.error);
+    });
+  }
+
+  async function loadWalletLocal() {
+    const db = await openIndexedDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('wallets', 'readonly');
+      const store = tx.objectStore('wallets');
+      const req = store.get('primary');
+      req.onsuccess = (event) => resolve(event.target.result);
+      req.onerror = (event) => reject(event.target.error);
+    });
+  }
+
+  async function clearLocalWallet() {
+    const db = await openIndexedDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('wallets', 'readwrite');
+      const store = tx.objectStore('wallets');
+      const req = store.delete('primary');
+      req.onsuccess = () => resolve();
+      req.onerror = (event) => reject(event.target.error);
+    });
+  }
+
+  function getProvider(chain = currentNetwork) {
+    return new ethers.JsonRpcProvider(NETWORKS[chain].rpc);
+  }
+
+  async function createWallet(password) {
+    const created = ethers.Wallet.createRandom();
+    const mnemonic = created.mnemonic.phrase;
+    const address = created.address;
+    const encryptedMnemonic = encryptText(mnemonic, password);
+    walletMnemonic = mnemonic;
+    walletPassword = password;
+    wallet = created.connect(getProvider(currentNetwork));
+    walletAddress = address;
+    encryptedWallet = encryptedMnemonic;
+    return { mnemonic, address, encryptedMnemonic };
+  }
+
+  async function importWallet(mnemonic, password) {
+    const words = mnemonic.trim().split(/\s+/);
+    if (words.length !== 12 && words.length !== 24) throw new Error("Seed phrase inválida (12 ou 24 palavras)");
+    const phrase = words.join(' ');
+    const created = ethers.Wallet.fromPhrase(phrase);
+    const address = created.address;
+    const encryptedMnemonic = encryptText(phrase, password);
+    walletMnemonic = phrase;
+    walletPassword = password;
+    wallet = created.connect(getProvider(currentNetwork));
+    walletAddress = address;
+    encryptedWallet = encryptedMnemonic;
+    return { mnemonic: phrase, address, encryptedMnemonic };
+  }
+
+  async function decryptWallet(password) {
+    if (!encryptedWallet) throw new Error('Nenhuma carteira armazenada');
+    const mnemonic = decryptText(encryptedWallet, password);
+    if (!mnemonic) throw new Error('Senha da carteira incorreta');
+    const created = ethers.Wallet.fromPhrase(mnemonic);
+    walletMnemonic = mnemonic;
+    walletPassword = password;
+    wallet = created.connect(getProvider(currentNetwork));
+    walletAddress = created.address;
+    return wallet;
+  }
+
+  async function saveWalletData(uid, network) {
+    if (!walletAddress || !encryptedWallet) return;
+    await set(ref(db, `users/${uid}/wallet`), {
+      address: walletAddress,
+      encryptedMnemonic: encryptedWallet,
+      network,
+      updatedAt: Date.now()
+    });
+    await saveWalletLocally({
+      id: 'primary',
+      address: walletAddress,
+      encryptedMnemonic: encryptedWallet,
+      network,
+      updatedAt: Date.now()
+    });
+    localStorage.setItem('cryptoWalletMeta', JSON.stringify({ address: walletAddress, network, updatedAt: Date.now() }));
+  }
+
+  async function loadWalletFromFirebase(uid) {
+    const snap = await get(ref(db, `users/${uid}/wallet`));
+    return snap.exists() ? snap.val() : null;
+  }
+
+  async function restoreWallet() {
+    const local = await loadWalletLocal().catch(() => null);
+    if (local) {
+      walletAddress = local.address;
+      encryptedWallet = local.encryptedMnemonic;
+      currentNetwork = local.network || currentNetwork;
+      return true;
+    }
+    return false;
+  }
+
+  async function getEthBalance(address) {
+    try {
+      const provider = getProvider(currentNetwork);
+      const balance = await provider.getBalance(address);
+      return parseFloat(ethers.formatEther(balance)).toFixed(6);
+    } catch {
+      return "0.000000";
+    }
+  }
+
+  async function getTokenBalance(address, tokenAddress) {
+    const provider = getProvider(currentNetwork);
+    const abi = ['function balanceOf(address) view returns (uint256)', 'function decimals() view returns (uint8)', 'function symbol() view returns (string)'];
+    const contract = new ethers.Contract(tokenAddress, abi, provider);
+    const [raw, decimals, symbol] = await Promise.all([contract.balanceOf(address), contract.decimals(), contract.symbol()]);
+    return {
+      symbol,
+      balance: parseFloat(ethers.formatUnits(raw, decimals)).toFixed(4)
+    };
+  }
+
+  async function getPortfolio() {
+    try {
+      const res = await fetch(`https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=10&page=1&sparkline=true&x_cg_demo_api_key=${COINGECKO_KEY}`);
+      return await res.json();
+    } catch {
+      return [];
+    }
+  }
+
+  async function getTxHistory(address) {
+    try {
+      const res = await fetch(`https://api.etherscan.io/api?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&page=1&offset=10&sort=desc&apikey=${ETHERSCAN_KEY}`);
+      const data = await res.json();
+      return data.result || [];
+    } catch {
+      return [];
+    }
+  }
+
+  async function getDexData(query) {
+    try {
+      const res = await fetch(`https://api.dexscreener.com/latest/dex/search?q=${query}`);
+      const data = await res.json();
+      return data.pairs ? data.pairs.slice(0,5) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  async function getCryptoNews() {
+    try {
+      // Tenta NewsAPI para notícias de criptomoedas
+      const res = await fetch(`https://newsapi.org/v2/everything?q=cryptocurrency&sortBy=publishedAt&language=pt&pageSize=15&apiKey=demo`);
+      const data = await res.json();
+      if (data.articles && Array.isArray(data.articles)) {
+        return data.articles.map(article => ({
+          title: article.title,
+          source: { title: article.source.name },
+          url: article.url,
+          published_at: article.publishedAt,
+          currencies: []
+        }));
+      }
+    } catch (e) {
+      console.log('NewsAPI falhou:', e.message);
+    }
+
+    try {
+      // Fallback: CoinGecko trending
+      const res = await fetch(`https://api.coingecko.com/api/v3/search/trending?x_cg_demo_api_key=${COINGECKO_KEY}`);
+      const data = await res.json();
+      return data.coins ? data.coins.slice(0, 10).map(c => ({
+        title: `${c.item.name} trending no mercado`,
+        source: { title: 'CoinGecko' },
+        url: `https://www.coingecko.com/en/coins/${c.item.id}`,
+        published_at: new Date().toISOString(),
+        currencies: [{ code: c.item.symbol.toUpperCase() }]
+      })) : [];
+    } catch (e) {
+      console.log('CoinGecko trending falhou:', e.message);
+      return [];
+    }
+  }
+
+  async function handleRegister() {
+    const email = $('reg-email').value.trim();
+    const pass = $('reg-pass').value;
+    const pass2 = $('reg-pass2').value;
+    const walletPass = $('reg-wallet-pass').value;
+    const username = $('reg-username').value.trim();
+    if (!email || !pass || !pass2 || !walletPass || !username) return showToast("Preencha todos os campos","error");
+    if (pass !== pass2) return showToast("Senhas não conferem","error");
+    if (pass.length < 6) return showToast("Senha mínima 6 caracteres","error");
+    if (walletPass.length < 8) return showToast("Senha da carteira mínima 8 caracteres","error");
+    try {
+      $('reg-btn').disabled = true; $('reg-btn').textContent = "Criando...";
+      const cred = await createUserWithEmailAndPassword(auth, email, pass);
+      await updateProfile(cred.user, { displayName: username });
+      const w = await createWallet(walletPass);
+      await saveWalletData(cred.user.uid, "ethereum");
+      await set(ref(db, `users/${cred.user.uid}/profile`), { username, email, bio: "", followers: 0, following: 0, joined: Date.now() });
+      showSeedPhrase(w.mnemonic);
+    } catch (e) {
+      showToast(e.message, "error");
+      $('reg-btn').disabled = false; $('reg-btn').textContent = "CRIAR CONTA";
+    }
+  }
+
+  async function handleLogin() {
+    const email = $('login-email').value.trim();
+    const pass = $('login-pass').value;
+    if (!email || !pass) return showToast("Preencha email e senha","error");
+    try {
+      $('login-btn').disabled = true; $('login-btn').textContent = "Entrando...";
+      await signInWithEmailAndPassword(auth, email, pass);
+    } catch (e) {
+      showToast("Email ou senha inválidos","error");
+      $('login-btn').disabled = false; $('login-btn').textContent = "ENTRAR";
+    }
+  }
+
+  async function handleLogout() {
+    await signOut(auth);
+    walletAddress = null;
+    walletMnemonic = null;
+    encryptedWallet = null;
+    wallet = null;
+    walletPassword = null;
+    showPage('login');
+  }
+
+  function showSeedPhrase(mnemonic) {
+    $('seed-display').innerHTML = mnemonic.split(' ').map((w,i) => `<span class="seed-word"><em>${i+1}</em>${w}</span>`).join('');
+    showPage('seed');
+  }
+
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      currentUser = user;
+      $('login-btn') && ($('login-btn').disabled = false, $('login-btn').textContent = "ENTRAR");
+      const walletData = await loadWalletFromFirebase(user.uid);
+      if (walletData) {
+        walletAddress = walletData.address;
+        encryptedWallet = walletData.encryptedMnemonic;
+        currentNetwork = walletData.network || "ethereum";
+        await saveWalletLocally({ id: 'primary', address: walletAddress, encryptedMnemonic: encryptedWallet, network: currentNetwork, updatedAt: Date.now() }).catch(() => {});
+      }
+      await restoreWallet().catch(() => {});
+      await initApp();
+      await loadDemoPortfolio();
+      requestNotificationPermission();
+      // use global loader to ensure inline handlers and UI bindings match
+      try { window.loadSocialFeed && window.loadSocialFeed(); } catch (e) { console.warn('loadSocialFeed failed', e); }
+      setInterval(() => { getGasPrice(); checkPriceAlerts(); }, 30000);
+      showPage('dashboard');
+    } else {
+      currentUser = null;
+      showPage('login');
+    }
+  });
+
+  async function initApp() {
+    document.querySelectorAll('.app-name').forEach(el => el.textContent = APP_NAME);
+    document.querySelectorAll('.app-logo-text').forEach(el => el.textContent = APP_NAME.charAt(0).toUpperCase());
+    document.title = APP_NAME;
+    if (currentUser) {
+      document.querySelectorAll('.user-display-name').forEach(el => el.textContent = currentUser.displayName || "Usuário");
+      document.querySelectorAll('.user-email').forEach(el => el.textContent = currentUser.email || "");
+      document.querySelectorAll('.user-avatar-letter').forEach(el => el.textContent = (currentUser.displayName || "U").charAt(0).toUpperCase());
+    }
+    if (walletAddress) {
+      updateDashboard();
+    }
+    await loadMarket();
+    await loadNews();
+    await loadGas();
+    if (window.loadSocialFeed) await window.loadSocialFeed();
+  }
+
+  async function updateDashboard() {
+    if (!walletAddress) return;
+    const balance = await getEthBalance(walletAddress);
+    const net = NETWORKS[currentNetwork];
+    $('wallet-address-display').textContent = truncAddr(walletAddress);
+    $('wallet-balance').textContent = `${balance} ${net.symbol}`;
+    $('network-badge').textContent = net.name;
+    $('network-badge').style.background = net.color + '33';
+    $('network-badge').style.color = net.color;
+    try {
+      const coinId = currentNetwork === 'bsc' ? 'binancecoin' : currentNetwork === 'polygon' ? 'matic-network' : 'ethereum';
+      const res = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd&x_cg_demo_api_key=${COINGECKO_KEY}`);
+      const data = await res.json();
+      const price = data[coinId]?.usd || 0;
+      const usd = (parseFloat(balance) * price).toFixed(2);
+      $('wallet-usd').textContent = `≈ $${usd}`;
+    } catch {}
+    loadTokenBalances();
+    loadTxHistory();
+    updateReceiveQr();
+  }
+
+  async function loadTokenBalances() {
+    const tokenList = $('token-balances');
+    if (!tokenList) return;
+    const tokens = TOKEN_CONTRACTS[currentNetwork] || [];
+    if (!walletAddress || !tokens.length) {
+      tokenList.innerHTML = '<p class="empty-msg">Sem tokens para esta rede</p>';
+      return;
+    }
+    const rows = await Promise.all(tokens.map(async token => {
+      try {
+        const bal = await getTokenBalance(walletAddress, token.address);
+        return `<div class="token-line"><span>${bal.symbol}</span><strong>${bal.balance}</strong></div>`;
+      } catch {
+        return `<div class="token-line"><span>${token.symbol}</span><strong>—</strong></div>`;
+      }
+    }));
+    tokenList.innerHTML = rows.join('');
+  }
+
+  async function loadTxHistory() {
+    if (!walletAddress) return;
+    const txs = await getTxHistory(walletAddress);
+    const list = $('tx-list');
+    if (!Array.isArray(txs) || !txs.length) { list.innerHTML = '<p class="empty-msg">Nenhuma transação encontrada</p>'; return; }
+    list.innerHTML = txs.slice(0,8).map(tx => {
+      const isOut = tx.from?.toLowerCase() === walletAddress.toLowerCase();
+      const val = (parseInt(tx.value) / 1e18).toFixed(6);
+      const date = new Date(tx.timeStamp * 1000).toLocaleDateString('pt-BR');
+      return `<div class="tx-item ${isOut ? 'tx-out' : 'tx-in'}">
+        <div class="tx-icon">${isOut ? '' : ''}</div>
+        <div class="tx-info">
+          <span class="tx-type">${isOut ? 'Enviado' : 'Recebido'}</span>
+          <span class="tx-addr">${isOut ? truncAddr(tx.to) : truncAddr(tx.from)}</span>
+        </div>
+        <div class="tx-right">
+          <span class="tx-val">${isOut ? '-' : '+'}${val} ETH</span>
+          <span class="tx-date">${date}</span>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  async function loadMarket() {
+  const coins = await getPortfolio();
+  portfolioData = coins;
+  const list = $('market-list');
+  if (!list) return;
+  
+  list.innerHTML = coins.map(c => {
+    const change = c.price_change_percentage_24h || 0;
+    const spark = c.sparkline_in_7d?.price || [];
+    const mini = createMiniChart(spark, change >= 0);
+    const symbolUpper = c.symbol.toUpperCase();
+    
+    return `<div class="market-item">
+      <div class="market-left" onclick="openCoinDetail('${c.id}','${c.symbol}','${c.name}',${c.current_price},${change})">
+        <img src="${c.image}" alt="${c.symbol}" class="coin-img" onerror="this.style.display='none'">
+        <div>
+          <span class="coin-name">${c.name}</span>
+          <span class="coin-sym">${symbolUpper}</span>
+        </div>
+      </div>
+      <div class="market-spark">${mini}</div>
+      <div class="market-right">
+        <span class="coin-price">$${c.current_price?.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:6})}</span>
+        <span class="coin-change ${change >= 0 ? 'pos' : 'neg'}">${change >= 0 ? '+' : ''}${change.toFixed(2)}%</span>
+      </div>
+      <div class="market-demo-actions">
+        <button class="btn-demo-buy" onclick="buyDemoAsset('${symbolUpper}', ${c.current_price})"> Comprar Demo</button>
+        <button class="btn-demo-sell" onclick="sellDemoAsset('${symbolUpper}', ${c.current_price})"> Vender Demo</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+  function createMiniChart(prices, positive) {
+    if (!prices.length) return '';
+    const min = Math.min(...prices), max = Math.max(...prices), range = max - min || 1;
+    const w = 60, h = 28, pts = prices.slice(-20);
+    const xs = pts.map((_,i) => (i/(pts.length-1))*w);
+    const ys = pts.map(p => h - ((p - min)/range)*h);
+    const d = xs.map((x,i) => `${i===0?'M':'L'}${x},${ys[i]}`).join(' ');
+    const color = positive ? '#00e676' : '#ff5252';
+    return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}"><path d="${d}" fill="none" stroke="${color}" stroke-width="1.5"/></svg>`;
+  }
+
+  async function loadGas() {
+    gasData = await getGasPrice();
+    const el = $('gas-display');
+    if (!el) return;
+    if (gasData.SafeGasPrice) {
+      el.innerHTML = `<span class="gas-low" title="Lento"> ${gasData.SafeGasPrice}</span> <span class="gas-mid" title="Normal"> ${gasData.ProposeGasPrice}</span> <span class="gas-high" title="Rápido"> ${gasData.FastGasPrice}</span> <span class="gas-unit">Gwei</span>`;
+    } else {
+      el.textContent = "Gas: N/A";
+    }
+  }
+
+  async function loadNews() {
+    const news = await getCryptoNews();
+    const list = $('news-feed');
+    if (!list) return;
+    if (!Array.isArray(news) || !news.length) { list.innerHTML = '<p class="empty-msg">Nenhuma notícia disponível</p>'; return; }
+    list.innerHTML = news.slice(0,15).map(n => {
+      const time = new Date(n.published_at).toLocaleString('pt-BR');
+      const currencies = (n.currencies || []).slice(0,3).map(c => `<span class="tag">${c.code}</span>`).join('');
+      return `<div class="news-card">
+        <div class="news-source">${n.source?.title || 'News'} · ${time}</div>
+        <a href="${n.url}" target="_blank" rel="noopener" class="news-title">${n.title}</a>
+        <div class="news-tags">${currencies}</div>
+      </div>`;
+    }).join('');
+  }
+
+
+  async function likePost(postId, currentLikes) {
+    await set(ref(db, `posts/${postId}/likes`), currentLikes + 1);
+  }
+
+  function getAppUser() {
+    const user = currentUser || auth?.currentUser || null;
+    if (user && !currentUser) currentUser = user;
+    return user;
+  }
+
+  function escapeHtml(text) {
+    return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  async function sendTransaction() {
+    const to = $('send-to').value.trim();
+    const amount = $('send-amount').value.trim();
+    if (!to || !amount) return showToast("Preencha destinatário e valor","error");
+    if (!to.match(/^0x[0-9a-fA-F]{40}$/)) return showToast("Endereço inválido","error");
+    if (parseFloat(amount) <= 0) return showToast("Valor inválido","error");
+    $('confirm-to').textContent = truncAddr(to);
+    $('confirm-amount').textContent = `${amount} ${NETWORKS[currentNetwork].symbol}`;
+    const gas = gasData.ProposeGasPrice || "~20";
+    $('confirm-gas').textContent = `${gas} Gwei`;
+    $('confirm-modal').style.display = 'flex';
+  }
+
+  async function confirmSend() {
+    $('confirm-modal').style.display = 'none';
+    const to = $('send-to').value.trim();
+    const amount = $('send-amount').value.trim();
+    if (!wallet && encryptedWallet) {
+      const pass = prompt('Digite a senha da carteira para autorizar a transação:');
+      if (!pass) return showToast('Assinatura cancelada','error');
+      try {
+        await decryptWallet(pass);
+      } catch (e) {
+        return showToast(e.message, 'error');
+      }
+    }
+    if (!wallet) return showToast('Carteira não desbloqueada','error');
+    try {
+      const provider = getProvider(currentNetwork);
+      const signer = wallet.connect(provider);
+      const tx = await signer.sendTransaction({
+        to,
+        value: ethers.parseEther(amount)
+      });
+      showToast(`Transação enviada: ${tx.hash}`, 'success');
+      $('send-to').value = '';
+      $('send-amount').value = '';
+      updateDashboard();
+    } catch (e) {
+      showToast(e.message, 'error');
+    }
+  }
+
+  function copyReceiveAddress() {
+    copyToClipboard(walletAddress || "Crie uma carteira primeiro");
+  }
+
+  function buildEmv(id, value) {
+    const str = String(value || '');
+    return String(id).padStart(2, '0') + String(str.length).padStart(2, '0') + str;
+  }
+
+  function calculateCrc16(payload) {
+    let crc = 0xFFFF;
+    for (let i = 0; i < payload.length; i += 1) {
+      crc ^= payload.charCodeAt(i) << 8;
+      for (let j = 0; j < 8; j += 1) {
+        crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) : (crc << 1);
+        crc &= 0xFFFF;
+      }
+    }
+    return crc.toString(16).toUpperCase().padStart(4, '0');
+  }
+
+  function buildPixPayload(key, amount) {
+    const merchantName = APP_NAME.slice(0, 25);
+    const merchantCity = 'SAO PAULO'.slice(0, 15);
+    const pixKey = key.trim();
+    const amountString = amount ? parseFloat(amount).toFixed(2) : '';
+    const payload = [
+      buildEmv('00', '01'),
+      buildEmv('26', buildEmv('00', 'BR.GOV.BCB.PIX') + buildEmv('01', pixKey)),
+      buildEmv('52', '0000'),
+      buildEmv('53', '986'),
+      amountString ? buildEmv('54', amountString) : '',
+      buildEmv('58', 'BR'),
+      buildEmv('59', merchantName),
+      buildEmv('60', merchantCity),
+      buildEmv('63', '0000')
+    ].join('');
+    return payload + calculateCrc16(payload);
+  }
+
+  function generatePixCode() {
+    const key = $('pix-key')?.value.trim();
+    const amount = $('pix-amount')?.value.trim();
+    if (!key) return showToast('Informe a chave PIX', 'error');
+    const pixPayload = buildPixPayload(key, amount);
+    const qrBox = $('pix-qr-box');
+    const codeDisplay = $('pix-code-display');
+    if (!qrBox || !codeDisplay) return;
+    qrBox.innerHTML = '';
+    new QRCode(qrBox, {
+      text: pixPayload,
+      width: 200,
+      height: 200,
+      colorDark: '#080808',
+      colorLight: '#ffffff00',
+      correctLevel: QRCode.CorrectLevel.H
+    });
+    codeDisplay.textContent = pixPayload;
+    showToast('PIX QR gerado', 'success');
+  }
+
+  function copyPixCode() {
+    const code = $('pix-code-display')?.textContent || '';
+    if (!code || code.includes('PIX code aparecerá aqui')) return showToast('Nenhum código PIX para copiar', 'error');
+    copyToClipboard(code);
+  }
+
+  async function openMoonPay() {
+    const amount = parseFloat($('moonpay-amount')?.value || '0');
+    if (!amount || amount <= 0) return showToast('Informe um valor válido para MoonPay', 'error');
+    if (!walletAddress) return showToast('Crie ou importe uma carteira antes de usar MoonPay', 'error');
+
+    try {
+  const response = await fetch(`/moonpay/url?amount=${encodeURIComponent(amount.toFixed(2))}&walletAddress=${encodeURIComponent(walletAddress)}`);
+    const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Falha ao gerar checkout MoonPay');
+      window.open(data.url, '_blank');
+    } catch (error) {
+      showToast(error.message, 'error');
+    }
+  }
+
+  function updateReceiveQr() {
+    const qrBox = $('qr-box');
+    if (!qrBox || !walletAddress) return;
+    qrBox.innerHTML = '';
+    new QRCode(qrBox, {
+      text: walletAddress,
+      width: 200,
+      height: 200,
+      colorDark: '#080808',
+      colorLight: '#ffffff00',
+      correctLevel: QRCode.CorrectLevel.H
+    });
+  }
+
+  function switchNetwork(net) {
+    if (!NETWORKS[net]) return;
+    currentNetwork = net;
+    if (currentUser) {
+      set(ref(db, `users/${currentUser.uid}/wallet/network`), net);
+    }
+    document.querySelectorAll('.net-option').forEach(n => n.classList.toggle('active', n.dataset.net === net));
+    updateDashboard();
+    showToast(`Rede: ${NETWORKS[net].name}`, "success");
+  }
+
+  async function dexSearch() {
+    const q = $('dex-query').value.trim();
+    if (!q) return;
+    $('dex-results').innerHTML = '<p class="loading-msg">Buscando...</p>';
+    const pairs = await getDexData(q);
+    if (!pairs.length) { $('dex-results').innerHTML = '<p class="empty-msg">Nenhum par encontrado</p>'; return; }
+    $('dex-results').innerHTML = pairs.map(p => {
+      const symbol = String(p.baseToken?.symbol || p.baseToken?.name || p.baseToken?.address || 'TOKEN').replace(/'/g, "\\'");
+      const price = parseFloat(p.priceUsd || 0);
+      return `<div class="dex-pair">
+        <div class="dex-pair-name">${p.baseToken?.symbol}/${p.quoteToken?.symbol} <span class="dex-exchange">${p.dexId}</span></div>
+        <div class="dex-pair-info">
+          <span>$${price.toFixed(8)}</span>
+          <span class="${(p.priceChange?.h24||0)>=0?'pos':'neg'}">${(p.priceChange?.h24||0).toFixed(2)}%</span>
+          <span>Vol: $${((p.volume?.h24||0)/1000).toFixed(1)}K</span>
+          <span>Liq: $${((p.liquidity?.usd||0)/1000).toFixed(1)}K</span>
+        </div>
+        <div class="dex-chain">${p.chainId} · <a href="${p.url}" target="_blank" rel="noopener">Ver no DEX </a></div>
+        <div class="dex-actions"><button class="dex-buy" onclick="buyDemoAsset('${symbol}', ${price})">Comprar Demo</button></div>
+      </div>`;
+    }).join('');
+  }
+
+  function openDexBuy(url) {
+    if (!url) return showToast('URL DEX inválida','error');
+    window.open(url, '_blank');
+  }
+  window.openDexBuy = openDexBuy;
+
+  window.openCoinDetail = function(id, symbol, name, price, change) {
+    $('detail-name').textContent = name;
+    $('detail-symbol').textContent = symbol.toUpperCase();
+    $('detail-price').textContent = `$${price?.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:6})}`;
+    $('detail-change').textContent = `${change >= 0 ? '+' : ''}${change?.toFixed(2)}%`;
+    $('detail-change').className = `detail-change ${change >= 0 ? 'pos' : 'neg'}`;
+    $('coin-detail-modal').style.display = 'flex';
+    fetch(`https://api.coingecko.com/api/v3/coins/${id}?x_cg_demo_api_key=${COINGECKO_KEY}`)
+      .then(r => r.json()).then(data => {
+        $('detail-mktcap').textContent = `$${((data.market_data?.market_cap?.usd||0)/1e9).toFixed(2)}B`;
+        $('detail-vol').textContent = `$${((data.market_data?.total_volume?.usd||0)/1e9).toFixed(2)}B`;
+        $('detail-desc').textContent = (data.description?.en || '').replace(/<[^>]+>/g,'').slice(0,300) + '...';
+      }).catch(() => {});
+  };
+
+  async function handleImportWallet() {
+    const mnemonic = $('import-mnemonic').value.trim();
+    const pass = $('import-pass').value;
+    if (!mnemonic || !pass) return showToast("Preencha todos os campos","error");
+    try {
+      const w = await importWallet(mnemonic, pass);
+      if (currentUser) await saveWalletData(currentUser.uid, "ethereum");
+      showToast("Carteira importada com sucesso!","success");
+      updateDashboard();
+      showPage('dashboard');
+    } catch (e) { showToast(e.message, "error"); }
+  }
+
+  async function connectWeb3() {
+    if (!window.ethereum) return showToast('Instale MetaMask ou outra carteira Web3', 'error');
+    try {
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      if (accounts.length) showToast(`Conectado: ${truncAddr(accounts[0])}`, 'success');
+    } catch (e) {
+      showToast('Falha ao conectar dApp', 'error');
+    }
+  }
+
+  async function signMessage() {
+    if (!wallet && encryptedWallet) {
+      const pass = prompt('Digite a senha da carteira para assinar a mensagem:');
+      if (!pass) return showToast('Assinatura cancelada', 'error');
+      try {
+        await decryptWallet(pass);
+      } catch (e) {
+        return showToast(e.message, 'error');
+      }
+    }
+    if (!wallet) return showToast('Carteira não desbloqueada', 'error');
+    try {
+      const signature = await wallet.signMessage('Assinatura de mensagem no MetaMask Clone');
+      alert(`Mensagem assinada:\n${signature}`);
+    } catch (e) {
+      showToast(e.message, 'error');
+    }
+  }
+
+  function switchAuthTab(tab) {
+    document.querySelectorAll('.auth-tab').forEach((t, i) => {
+      t.classList.toggle('active', (tab === 'login' && i === 0) || (tab === 'register' && i === 1));
+    });
+    document.querySelectorAll('.auth-form').forEach(f => {
+      f.classList.toggle('active', f.id === `auth-form-${tab}`);
+    });
+  }
+
+  function switchInnerPage(page) {
+    document.querySelectorAll('.inner-page').forEach(p => {
+      p.classList.toggle('active', p.id === `inner-${page}`);
+    });
+    document.querySelectorAll('.nav-item').forEach(n => {
+      n.classList.toggle('active', n.dataset.page === page);
+    });
+    if (page === 'receive') {
+      const addr = walletAddress || 'Nenhuma carteira vinculada';
+      const receiveLabel = $('receive-addr-display');
+      if (receiveLabel) receiveLabel.textContent = addr;
+      updateReceiveQr();
+      const pixCodeDisplay = $('pix-code-display');
+      if (pixCodeDisplay) pixCodeDisplay.textContent = 'Código PIX aparecerá aqui';
+      const pixQrBox = $('pix-qr-box');
+      if (pixQrBox) pixQrBox.innerHTML = '<span style="color:var(--text3);font-size:12px;text-align:center">QR PIX aparecerá aqui</span>';
+    }
+    if (page === 'settings') {
+      const settingsAddr = $('settings-addr');
+      if (settingsAddr) settingsAddr.textContent = walletAddress ? `${walletAddress.slice(0,10)}...${walletAddress.slice(-6)}` : '—';
+    }
+    if (page === 'social') {
+      if (window.loadSocialFeed) window.loadSocialFeed();
+    }
+  }
+
+  function switchTab(btn, targetId) {
+    const parent = btn.closest('.tab-row') || btn.parentElement;
+    parent.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const container = btn.closest('.inner-page') || document.body;
+    container.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    const target = $(`${targetId}`);
+    if (target) target.classList.add('active');
+  }
+
+  function selectGas(el, speed) {
+    document.querySelectorAll('.gas-chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  function filterMarket(q) {
+    const items = document.querySelectorAll('.market-item');
+    items.forEach(item => {
+      const text = item.textContent.toLowerCase();
+      item.style.display = text.includes(q.toLowerCase()) ? '' : 'none';
+    });
+  }
+
+  function copySeed() {
+    const words = Array.from(document.querySelectorAll('.seed-word')).map(w => w.textContent.replace(/^\d+/, '').trim());
+    if (window.copyToClipboard) window.copyToClipboard(words.join(' '));
+  }
+
+  function shareAddress() {
+    const addr = walletAddress || '';
+    if (navigator.share) {
+      navigator.share({ title: 'Meu endereço cripto', text: addr });
+    } else if (window.copyToClipboard) {
+      window.copyToClipboard(addr);
+    }
+  }
+
+  window.handleLogin = handleLogin;
+  window.handleRegister = handleRegister;
+  window.handleLogout = handleLogout;
+  window.showPage = showPage;
+  window.copyToClipboard = copyToClipboard;
+  window.copyReceiveAddress = copyReceiveAddress;
+  window.copyPixCode = copyPixCode;
+  window.generatePixCode = generatePixCode;
+  window.openMoonPay = openMoonPay;
+  window.switchNetwork = switchNetwork;
+  window.sendTransaction = sendTransaction;
+  window.confirmSend = confirmSend;
+  window.dexSearch = dexSearch;
+  window.handleImportWallet = handleImportWallet;
+  window.likePost = likePost;
+  window.submitPost = submitPost;
+  window.loadSocialFeed = loadSocialFeed;
+  window.updateDashboard = updateDashboard;
+  window.loadMarket = loadMarket;
+  window.loadNews = loadNews;
+  window.loadGas = loadGas;
+  window.buyDemoAsset = buyDemoAsset;
+  window.sellDemoAsset = sellDemoAsset;
+  window.connectWeb3 = connectWeb3;
+  window.switchInnerPage = switchInnerPage;
+  window.initApp = initApp;
+  window.switchTab = switchTab;
+  window.selectGas = selectGas;
+  window.filterMarket = filterMarket;
+  window.copySeed = copySeed;
+  window.shareAddress = shareAddress;
+  window.openCoinDetail = openCoinDetail;
+  window.sharePost = sharePost;
+  window.loadDemoPortfolio = loadDemoPortfolio;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.app-name').forEach(el => el.textContent = APP_NAME);
+    document.querySelectorAll('.app-logo-text').forEach(el => el.textContent = APP_NAME.charAt(0).toUpperCase());
+    document.title = APP_NAME;
+  });
+  // ========== PORTFÓLIO DE INVESTIMENTOS (DEMO) ==========
+let demoPortfolio = {
+  balance: 10000, // saldo demo em USD
+  investments: [] // { symbol, amount, buyPrice }
+};
+
+async function loadDemoPortfolio() {
+  const uid = currentUser?.uid || auth?.currentUser?.uid;
+  if (!uid) return;
+  const snap = await get(ref(db, `users/${uid}/demoPortfolio`));
+  if (snap.exists()) {
+    demoPortfolio = snap.val();
+  }
+  renderPortfolioChart();
+  renderPortfolioList();
+}
+
+async function saveDemoPortfolio() {
+  const user = getAppUser();
+  if (!user) return;
+  await set(ref(db, `users/${user.uid}/demoPortfolio`), demoPortfolio);
+}
+
+function renderPortfolioChart() {
+  const ctx = document.getElementById('portfolio-chart')?.getContext('2d');
+  if (!ctx) return;
+  const totalValue = demoPortfolio.balance + demoPortfolio.investments.reduce((sum, inv) => {
+    const coin = portfolioData.find(c => c.symbol.toUpperCase() === inv.symbol);
+    const price = coin?.current_price || 0;
+    return sum + inv.amount * price;
+  }, 0);
+  const investedValue = demoPortfolio.investments.reduce((sum, inv) => sum + inv.amount * inv.buyPrice, 0);
+  if (window.portfolioChart) window.portfolioChart.destroy();
+  window.portfolioChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Saldo Disponível', 'Valor Investido', 'Lucro'],
+      datasets: [{
+        data: [demoPortfolio.balance, investedValue, Math.max(0, totalValue - investedValue - demoPortfolio.balance)],
+        backgroundColor: ['#00e676', '#40c4ff', '#ffd740']
+      }]
+    }
+  });
+  document.getElementById('portfolio-total') && (document.getElementById('portfolio-total').textContent = `$${totalValue.toFixed(2)}`);
+}
+
+function buyDemoAsset(symbol, price) {
+  const amount = parseFloat(prompt(`Quantos ${symbol} quer comprar?`, "1"));
+  if (isNaN(amount) || amount <= 0) return;
+  const cost = amount * price;
+  if (cost > demoPortfolio.balance) return showToast("Saldo insuficiente na conta demo!", "error");
+  demoPortfolio.balance -= cost;
+  const existing = demoPortfolio.investments.find(i => i.symbol === symbol);
+  if (existing) {
+    const totalAmount = existing.amount + amount;
+    const totalCost = existing.amount * existing.buyPrice + cost;
+    existing.buyPrice = totalCost / totalAmount;
+    existing.amount = totalAmount;
+  } else {
+    demoPortfolio.investments.push({ symbol, amount, buyPrice: price });
+  }
+  saveDemoPortfolio();
+  renderPortfolioChart();
+  renderPortfolioList();
+  showToast(`Comprou ${amount} ${symbol} por $${cost.toFixed(2)}`, "success");
+}
+
+function sellDemoAsset(symbol, price) {
+  const inv = demoPortfolio.investments.find(i => i.symbol === symbol);
+  if (!inv) return showToast("Você não possui este ativo", "error");
+  const amount = parseFloat(prompt(`Quantos ${symbol} quer vender? (máx ${inv.amount})`, inv.amount));
+  if (isNaN(amount) || amount <= 0 || amount > inv.amount) return;
+  const revenue = amount * price;
+  demoPortfolio.balance += revenue;
+  inv.amount -= amount;
+  if (inv.amount < 0.0001) demoPortfolio.investments = demoPortfolio.investments.filter(i => i.symbol !== symbol);
+  saveDemoPortfolio();
+  renderPortfolioChart();
+  renderPortfolioList();
+  showToast(`Vendeu ${amount} ${symbol} por $${revenue.toFixed(2)}`, "success");
+}
+
+function renderPortfolioList() {
+  const container = document.getElementById('portfolio-investments');
+  if (!container) return;
+  if (demoPortfolio.investments.length === 0) {
+    container.innerHTML = '<p class="empty-msg">Nenhum investimento. Compre ativos no Mercado!</p>';
+    return;
+  }
+  container.innerHTML = demoPortfolio.investments.map(inv => {
+    const coin = portfolioData.find(c => c.symbol.toUpperCase() === inv.symbol);
+    const currentPrice = coin?.current_price || 0;
+    const currentValue = inv.amount * currentPrice;
+    const profitLoss = currentValue - (inv.amount * inv.buyPrice);
+    return `<div class="portfolio-item">
+      <div><strong>${inv.symbol}</strong> ${inv.amount.toFixed(6)} unid.</div>
+      <div>Preço médio: $${inv.buyPrice.toFixed(2)}</div>
+      <div class="${profitLoss >= 0 ? 'pos' : 'neg'}">${profitLoss >= 0 ? '▲' : '▼'} $${Math.abs(profitLoss).toFixed(2)}</div>
+      <button class="btn-small" onclick="sellDemoAsset('${inv.symbol}', ${currentPrice})">Vender</button>
+    </div>`;
+  }).join('');
+}
+
+// ========== NOTIFICAÇÕES FUNCIONAIS ==========
+function requestNotificationPermission() {
+  if ("Notification" in window) {
+    Notification.requestPermission().then(perm => {
+      notificationPermission = perm === "granted";
+      if (notificationPermission) showToast("Notificações ativadas!", "success");
+    });
+  }
+}
+
+function checkPriceAlerts() {
+  if (!notificationPermission) return;
+  const alerts = JSON.parse(localStorage.getItem('priceAlerts') || '[]');
+  for (const alert of alerts) {
+    const coin = portfolioData.find(c => c.symbol === alert.symbol);
+    if (coin && coin.current_price >= alert.target && !alert.triggered) {
+      new Notification(` Alerta de Preço`, {
+        body: `${alert.symbol.toUpperCase()} atingiu $${coin.current_price}!`
+      });
+      alert.triggered = true;
+      localStorage.setItem('priceAlerts', JSON.stringify(alerts));
+    }
+  }
+}
+
+function setPriceAlert(symbol, targetPrice) {
+  const alerts = JSON.parse(localStorage.getItem('priceAlerts') || '[]');
+  alerts.push({ symbol, target: targetPrice, triggered: false });
+  localStorage.setItem('priceAlerts', JSON.stringify(alerts));
+  showToast(`Alerta configurado: ${symbol} em $${targetPrice}`, "success");
+}
+
+function toggleNotifications() {
+  if (notificationPermission) {
+    notificationPermission = false;
+    showToast('Notificações desativadas', 'info');
+  } else {
+    requestNotificationPermission();
+  }
+}
+
+function toggleLanguage() {
+  // Demo toggle: expand for real i18n later
+  showToast('Idioma: Português (demo)', 'success');
+}
+
+window.toggleNotifications = toggleNotifications;
+window.toggleLanguage = toggleLanguage;
+
+// ========== GÁS EM TEMPO REAL ==========
+async function getGasPrice() {
+  try {
+    const res = await fetch(`https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=${ETHERSCAN_KEY}`);
+    const data = await res.json();
+    if (data.result) {
+      gasData = data.result;
+      const gasPrices = { SafeGasPrice: parseFloat(data.result.SafeGasPrice), ProposeGasPrice: parseFloat(data.result.ProposeGasPrice), FastGasPrice: parseFloat(data.result.FastGasPrice) };
+      document.getElementById('gas-display') && (document.getElementById('gas-display').innerHTML = `
+        <span title="Lento"> ${gasPrices.SafeGasPrice}</span>
+        <span title="Normal"> ${gasPrices.ProposeGasPrice}</span>
+        <span title="Rápido"> ${gasPrices.FastGasPrice}</span> Gwei
+      `);
+    }
+    return data.result || {};
+  } catch { return {}; }
+}
+
+// ========== SEED PHRASE FUNCIONAL ==========
+async function exportSeed() {
+  if (!encryptedWallet) return showToast("Nenhuma carteira carregada", "error");
+  const pass = prompt(' Digite a senha da sua carteira para ver a Seed Phrase:');
+  if (!pass) return;
+  try {
+    const mnemonic = decryptText(encryptedWallet, pass);
+    if (!mnemonic) throw new Error('Senha incorreta');
+    showSeedModal(mnemonic);
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+function showSeedModal(mnemonic) {
+  let modal = document.getElementById('seed-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'seed-modal';
+    modal.className = 'modal-overlay';
+    modal.innerHTML = `<div class="modal-box" style="max-width:500px"><div class="modal-title"> Sua Seed Phrase</div><div class="seed-grid-modal" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:20px 0"></div><div class="seed-warning"> Guarde em local seguro. Nunca compartilhe.</div><div class="modal-actions"><button class="btn-ghost" onclick="copyToClipboard(document.getElementById('seed-modal-text').innerText)">Copiar</button><button class="btn-primary" onclick="document.getElementById('seed-modal').style.display='none'">Fechar</button></div></div>`;
+    document.body.appendChild(modal);
+  }
+  const words = mnemonic.split(' ');
+  const grid = modal.querySelector('.seed-grid-modal');
+  grid.innerHTML = words.map((w, i) => `<div class="seed-word"><em>${i+1}</em>${w}</div>`).join('');
+  const textSpan = document.createElement('span');
+  textSpan.id = 'seed-modal-text';
+  textSpan.style.display = 'none';
+  textSpan.innerText = mnemonic;
+  modal.appendChild(textSpan);
+  modal.style.display = 'flex';
+}
+
+// ========== REDE SOCIAL: COMENTÁRIOS E COMPARTILHAR ==========
+async function addComment(postId, postText) {
+  const user = getAppUser();
+  const commentText = prompt(" Escreva seu comentário:");
+  if (!commentText || !user) return;
+  const commentRef = push(ref(db, `comments/${postId}`));
+  await set(commentRef, {
+    uid: user.uid,
+    username: user.displayName || "Anônimo",
+    timestamp: Date.now()
+  });
+  showToast("Comentário adicionado!", "success");
+  loadComments(postId);
+}
+
+async function loadComments(postId) {
+  const commentsRef = query(ref(db, `comments/${postId}`), orderByChild('timestamp'), limitToLast(20));
+  onValue(commentsRef, (snap) => {
+    const container = document.getElementById(`comments-${postId}`);
+    if (!container) return;
+    const comments = [];
+    snap.forEach(child => comments.unshift({ id: child.key, ...child.val() }));
+    if (comments.length === 0) {
+      container.innerHTML = '<p class="empty-msg">Seja o primeiro a comentar </p>';
+      return;
+    }
+    container.innerHTML = comments.map(c => `
+      <div class="comment-item">
+        <strong>${c.username}</strong> <span style="color:var(--text3);font-size:11px">${new Date(c.timestamp).toLocaleString()}</span>
+        <p style="margin-top:4px">${escapeHtml(c.text)}</p>
+      </div>
+    `).join('');
+  });
+}
+
+async function sharePost(postId, postText) {
+  const shareData = { title: 'Post CryptoWallet', text: postText, url: window.location.href };
+  if (navigator.share) {
+    try { await navigator.share(shareData); } catch(e) {}
+  } else {
+    copyToClipboard(`${postText} - Compartilhado via CryptoWallet`);
+  }
+}
+
+// Atualizar função submitPost original para incluir comentários e compartilhamento
+// Substitua sua função submitPost existente por esta:
+async function submitPost() {
+  const input = document.getElementById('post-input');
+  const text = input?.value.trim();
+  const user = getAppUser();
+  if (!text) return showToast("Escreva algo primeiro","error");
+  if (!user) return showToast("Faça login para publicar","error");
+  try {
+    const postsRef = ref(db, 'posts');
+    await push(postsRef, {
+      uid: user.uid,
+      username: user.displayName || "Anônimo",
+      text,
+      likes: 0,
+      timestamp: Date.now()
+    });
+    if (input) input.value = '';
+    showToast("Post publicado! ","success");
+    if (window.loadSocialFeed) window.loadSocialFeed();
+  } catch (e) {
+    console.error('Erro ao publicar post:', e);
+    showToast(`Erro ao publicar: ${e.message || e}`, 'error');
+  }
+  if (notificationPermission) {
+    new Notification("Novo post seu!", { body: "Seu post foi publicado com sucesso." });
+  }
+}
+
+// Substitua o loadSocialFeed para incluir botões de comentário e compartilhar
+function loadSocialFeed() {
+    const list = document.getElementById('social-feed');
+    if (list) list.innerHTML = '<p class="loading-msg">Carregando feed...</p>';
+    const postsRef = query(ref(db, 'posts'), orderByChild('timestamp'), limitToLast(30));
+    onValue(postsRef, (snap) => {
+      const list2 = document.getElementById('social-feed');
+      if (!list2) return;
+      const posts = [];
+      snap.forEach(child => posts.unshift({ id: child.key, ...child.val() }));
+      if (!posts.length) {
+        list2.innerHTML = '<p class="empty-msg">Seja o primeiro a postar! </p>';
+        return;
+      }
+      list2.innerHTML = posts.map(p => {
+        const time = new Date(p.timestamp).toLocaleDateString('pt-BR');
+        const letter = (p.username || 'A').charAt(0).toUpperCase();
+        return `<div class="post-card" data-post-id="${p.id}">
+          <div class="post-header">
+            <div class="post-avatar">${letter}</div>
+            <div class="post-meta"><span class="post-user">@${p.username}</span><span class="post-time">${time}</span></div>
+          </div>
+          <p class="post-text">${escapeHtml(p.text)}</p>
+          <div class="post-actions">
+            <button class="post-btn" onclick="likePost('${p.id}', ${p.likes || 0})"> ${p.likes || 0}</button>
+            <button class="post-btn" onclick="toggleComments('${p.id}')"> Comentar</button>
+            <button class="post-btn" onclick="sharePost('${p.id}', '${escapeHtml(p.text).replace(/'/g, "\\'")}')"> Compartilhar</button>
+          </div>
+          <div id="comments-${p.id}" class="comments-section" style="display:none; margin-top:12px; padding-top:8px; border-top:1px solid var(--border);"></div>
+        </div>`;
+      }).join('');
+      posts.forEach(p => loadComments(p.id));
+    }, (error) => {
+      console.error('Erro ao carregar social feed:', error);
+      const list2 = document.getElementById('social-feed');
+      if (list2) list2.innerHTML = `<p class="empty-msg">Erro ao carregar feed: ${error.message}</p>`;
+      showToast('Erro ao carregar feed: verifique regras e conexão', 'error');
+    });
+    get(ref(db, 'posts')).then(snap => {
+      const list2 = document.getElementById('social-feed');
+      if (!list2) return;
+      if (!snap.exists() && (!list2.innerHTML || list2.innerHTML.trim() === '')) {
+        list2.innerHTML = '<p class="empty-msg">Nenhuma mensagem encontrada</p>';
+      }
+    }).catch(err => {
+      console.error('Erro ao buscar posts:', err);
+      const list2 = document.getElementById('social-feed');
+      if (list2) list2.innerHTML = `<p class="empty-msg">Erro ao carregar feed: ${err.message}</p>`;
+      showToast('Erro ao carregar feed: verifique regras/permissões', 'error');
+    });
+  };
+
+function toggleComments(postId) {
+  const div = document.getElementById(`comments-${postId}`);
+  if (div) {
+    if (div.style.display === 'none') {
+      div.style.display = 'block';
+      // Adicionar campo de comentário rápido
+      if (!div.querySelector('.comment-input-wrapper')) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'comment-input-wrapper';
+        wrapper.style.marginTop = '10px';
+        wrapper.innerHTML = `<textarea placeholder="Escreva um comentário..." rows="2" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px;color:white;margin-bottom:8px;"></textarea>
+                             <button class="btn-primary" style="padding:6px 12px;font-size:12px" onclick="addCommentFromField('${postId}', this)">Comentar</button>`;
+        div.appendChild(wrapper);
+      }
+    } else {
+      div.style.display = 'none';
+    }
+  }
+}
+
+async function addCommentFromField(postId, btn) {
+  const wrapper = btn.parentElement;
+  const textarea = wrapper.querySelector('textarea');
+  const commentText = textarea.value.trim();
+  if (!commentText || !currentUser) return showToast("Escreva um comentário", "error");
+  const commentRef = push(ref(db, `comments/${postId}`));
+  await set(commentRef, {
+    uid: currentUser.uid,
+    username: currentUser.displayName || "Anônimo",
+    text: commentText,
+    timestamp: Date.now()
+  });
+  textarea.value = '';
+  showToast("Comentário enviado!", "success");
+  loadComments(postId);
+};
+
+window.toggleComments = toggleComments;
+window.addCommentFromField = addCommentFromField;
+window.signMessage = signMessage;
+window.switchAuthTab = switchAuthTab;
+window.exportSeed = exportSeed;
+
+  // ABI mínimo do Uniswap V2 Router
+const UNISWAP_ROUTER = '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D'; // Ethereum mainnet
+const ROUTER_ABI = [
+  'function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) external payable returns (uint[] memory amounts)',
+  'function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts)'
+];
+
+async function buyTokenWithETH(tokenAddress, ethAmount) {
+  if (!wallet) {
+    showToast('Desbloqueie a carteira primeiro', 'error');
+    return;
+  }
+  try {
+    const provider = getProvider(currentNetwork);
+    const signer = wallet.connect(provider);
+    const router = new ethers.Contract(UNISWAP_ROUTER, ROUTER_ABI, signer);
+    
+    // Caminho: WETH -> Token
+    const WETH = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
+    const path = [WETH, tokenAddress];
+    
+    // Calcular valor mínimo esperado (com 1% de slippage)
+    const amounts = await router.getAmountsOut(ethers.parseEther(ethAmount), path);
+    const amountOutMin = amounts[1] * 99n / 100n;
+    
+    const tx = await router.swapExactETHForTokens(
+      amountOutMin,
+      path,
+      walletAddress,
+      Math.floor(Date.now() / 1000) + 1200, // deadline 20 min
+      { value: ethers.parseEther(ethAmount) }
+    );
+    showToast(`Compra enviada: ${tx.hash}`, 'success');
+    await tx.wait();
+    updateDashboard();
+  } catch (e) {
+    showToast(`Erro na compra: ${e.message}`, 'error');
+  }
+}
+
+// Exponha a função
+window.buyTokenWithETH = buyTokenWithETH;
+// ========== INTEGRAÇÃO COM O MERCADO (botões comprar/vender demo) ==========
+// Dentro da função loadMarket, adicione botões Compra/Venda Demo
+// Substitua a criação do market-item para incluir:
+/*
+  <div class="market-actions-demo">
+    <button class="btn-demo-buy" onclick="buyDemoAsset('${c.symbol.toUpperCase()}', ${c.current_price})">Comprar Demo</button>
+    <button class="btn-demo-sell" onclick="sellDemoAsset('${c.symbol.toUpperCase()}', ${c.current_price})">Vender Demo</button>
+  </div>
+*/
+// E no CSS adicione:
+// .btn-demo-buy, .btn-demo-sell { font-size:10px; padding:4px 8px; margin-left:6px; border-radius:6px; background:var(--bg3); border:1px solid var(--border); cursor:pointer; }
+</script>
+
+<style>
+  /* ===== VARIABLES ===== */
+  :root {
+    --bg: #f5f5f7;
+    --surface: rgba(255, 255, 255, 0.85);
+    --surface-solid: #ffffff;
+    --border: #d2d2d7;
+    --border-strong: #86868b;
+    --text: #1d1d1f;
+    --text2: #6e6e73;
+    --text3: #86868b;
+    --accent: #0066cc;
+    --accent-light: #e8f0fe;
+    --green: #24b47e;
+    --red: #ff3b30;
+    --yellow: #ffd740;
+    --blue: #40c4ff;
+    --radius: 18px;
+    --radius2: 12px;
+    --font-head: 'Playfair Display', serif;
+    --font-ui: 'Inter', sans-serif;
+    --shadow: 0 8px 20px rgba(0, 0, 0, 0.04);
+    --glass: blur(20px) saturate(180%) contrast(90%);
+  }
+
+  /* ===== RESET ===== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  a { color: var(--blue); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  button { cursor: pointer; border: none; background: none; font-family: inherit; }
+  input, textarea { font-family: inherit; }
+  img { display: block; }
+
+  /* ===== SCROLLBAR ===== */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 10px; }
+
+  /* ===== ANIMATIONS ===== */
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes scaleIn {
+    from { transform: scale(0.95); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  @keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .page.active { animation: fadeIn 0.4s ease-out forwards; }
+  .wallet-card { animation: scaleIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+  .market-item, .post-card, .news-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+  .market-item:hover { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); border-color: var(--accent); }
+
+  /* ===== LAYOUT ===== */
+  .app-wrapper { display: flex; flex-direction: column; min-height: 100vh; }
+
+  /* ===== PAGES ===== */
+  .page { display: none; flex-direction: column; flex: 1; }
+  .page.active { display: flex; }
+
+  /* ===== LOGO ===== */
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-icon {
+    width: 44px; height: 44px;
+    background: var(--accent);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-head); font-weight: 800; font-size: 24px;
+    color: white; letter-spacing: -1px;
+    flex-shrink: 0; box-shadow: 0 4px 15px rgba(166, 139, 91, 0.3);
+  }
+  .logo-name { font-family: var(--font-head); font-weight: 700; font-size: 24px; letter-spacing: 1px; color: var(--text); }
+
+  /* ===== LOGIN PAGE ===== */
+  #page-login {
+    align-items: center; justify-content: center;
+    background: var(--bg);
+    background-image: none;
+    padding: 24px;
+    min-height: 100vh;
+  }
+  .auth-box {
+    width: 100%; max-width: 400px;
+    background: #fff;
+    backdrop-filter: var(--glass);
+    border: none; box-shadow: 0 20px 40px rgba(0,0,0,0.04);
+    border-radius: var(--radius);
+    padding: 40px 32px;
+  }
+  .auth-box .logo { justify-content: center; margin-bottom: 32px; }
+  .auth-tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 28px; }
+  .auth-tab {
+    flex: 1; padding: 10px; text-align: center;
+    font-weight: 600; font-size: 13px; letter-spacing: 1px;
+    color: var(--text3); cursor: pointer; border-bottom: 2px solid transparent;
+    transition: all 0.2s; background: none; border-top: none; border-left: none; border-right: none;
+  }
+  .auth-tab.active { color: var(--text); border-bottom-color: var(--text); }
+  .auth-form { display: none; flex-direction: column; gap: 14px; }
+  .auth-form.active { display: flex; }
+  .field-group { display: flex; flex-direction: column; gap: 6px; }
+  .field-label { font-size: 11px; color: var(--text2); font-weight: 600; text-transform: uppercase; }
+  .field-input {
+    background: #fff; border: 1px solid var(--border);
+    border-radius: var(--radius2); padding: 14px;
+    color: var(--text); font-size: 14px;
+    transition: border-color 0.2s; outline: none;
+  }
+  .field-input:focus { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(0, 102, 204, 0.1); }
+  .field-input::placeholder { color: var(--text3); }
+  .btn-primary {
+    background: #000; color: #fff;
+    border-radius: var(--radius2); padding: 14px;
+    font-weight: 600; font-size: 14px;
+    transition: all 0.2s; width: 100%; margin-top: 6px;
+  }
+  .btn-primary:hover { opacity: 0.8; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-ghost {
+    border: 1px solid var(--border-strong); border-radius: var(--radius2); padding: 12px;
+    color: var(--text); font-weight: 600; font-size: 13px;
+    transition: all 0.2s; letter-spacing: 1px;
+  }
+  .btn-ghost:hover { border-color: var(--text3); }
+
+  /* ===== SEED PHRASE PAGE ===== */
+  #page-seed {
+    align-items: center; justify-content: center; padding: 24px;
+    background: var(--bg);
+  }
+  .seed-box {
+    width: 100%; max-width: 480px;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 32px;
+  }
+  .seed-warning {
+    background: #ffd74010; border: 1px solid #ffd74030;
+    border-radius: var(--radius2); padding: 12px 16px;
+    font-size: 12px; color: var(--yellow); margin-bottom: 20px;
+    line-height: 1.5;
+  }
+  .seed-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 20px 0; }
+  .seed-word {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius2); padding: 8px 10px;
+    font-size: 13px; display: flex; align-items: center; gap: 6px;
+  }
+  .seed-word em { font-style: normal; font-size: 10px; color: var(--text3); min-width: 16px; }
+
+  /* ===== MAIN APP (with nav) ===== */
+  .app-shell { display: flex; flex-direction: column; flex: 1; }
+  .top-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px; border-bottom: 1px solid var(--border);
+    background: var(--bg); position: sticky; top: 0; z-index: 100;
+  }
+  .top-bar-right { display: flex; align-items: center; gap: 12px; }
+  .avatar-btn {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--bg3); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; color: var(--text2); cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .avatar-btn:hover { border-color: var(--text3); }
+  .gas-bar {
+    font-size: 11px; color: var(--text3);
+    display: flex; align-items: center; gap: 4px;
+  }
+  .gas-bar span { display: flex; align-items: center; gap: 2px; }
+  .gas-unit { color: var(--text3); }
+  .main-content { flex: 1; overflow-y: auto; padding-bottom: 80px; }
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--bg); border-top: 1px solid var(--border);
+    display: flex; z-index: 100;
+  }
+  .nav-item {
+    flex: 1; display: flex; flex-direction: column; align-items: center;
+    gap: 4px; padding: 10px 4px; color: var(--text3);
+    font-size: 10px; letter-spacing: 1px; cursor: pointer;
+    transition: color 0.2s; border-top: 2px solid transparent;
+    font-family: var(--font-head); font-weight: 600;
+  }
+  .nav-item.active { color: var(--accent); border-top-color: var(--accent); }
+  .nav-icon { font-size: 18px; }
+
+  /* ===== INNER PAGES ===== */
+  .inner-page { display: none; flex-direction: column; flex: 1; }
+  .inner-page.active { display: flex; }
+
+  /* ===== DASHBOARD ===== */
+  .wallet-card {
+    margin: 20px 16px;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 24px;
+    position: relative; overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.03);
+  }
+  .wallet-card::before {
+    content: '';
+    position: absolute; top: -40px; right: -40px;
+    width: 140px; height: 140px;
+    background: radial-gradient(circle, #ffffff0a 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .wallet-network { margin-bottom: 16px; }
+  .network-badge {
+    display: inline-block; font-size: 11px; padding: 4px 10px;
+    border-radius: 100px; font-weight: 600; letter-spacing: 1px;
+  }
+  .wallet-addr-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .wallet-addr { font-size: 13px; color: var(--text2); }
+  .copy-btn {
+    font-size: 12px; color: var(--text3); padding: 2px 6px;
+    border: 1px solid var(--border); border-radius: 4px; transition: all 0.2s;
+  }
+  .copy-btn:hover { color: var(--text); border-color: var(--text3); }
+  .wallet-balance { font-family: var(--font-head); font-size: 30px; font-weight: 800; margin-bottom: 4px; }
+  .wallet-usd { font-size: 14px; color: var(--text2); margin-bottom: 20px; }
+  .wallet-actions { display: flex; gap: 10px; }
+  .action-btn {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius2); padding: 12px 8px;
+    color: var(--text); font-size: 11px; font-family: var(--font-head);
+    font-weight: 600; letter-spacing: 1px; transition: all 0.2s;
+  }
+  .action-btn:hover { border-color: var(--text3); }
+  .action-btn .icon { font-size: 20px; }
+
+  /* Network selector */
+  .section-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px; margin-top: 8px; margin-bottom: 12px;
+  }
+  .section-title { font-family: var(--font-head); font-size: 13px; font-weight: 700; letter-spacing: 2px; color: var(--text2); }
+  .net-scroll { display: flex; gap: 8px; padding: 0 16px; overflow-x: auto; padding-bottom: 4px; }
+  .net-scroll::-webkit-scrollbar { height: 0; }
+  .net-option {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius2); padding: 8px 14px;
+    white-space: nowrap; font-size: 13px; color: var(--text2);
+    cursor: pointer; transition: all 0.2s; flex-shrink: 0;
+  }
+  .net-option.active { border-color: var(--text3); color: var(--text); }
+  .net-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  /* TX List */
+  .tx-list { padding: 0 16px; display: flex; flex-direction: column; gap: 8px; }
+  .tx-item {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius2); padding: 12px;
+  }
+  .tx-icon {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; flex-shrink: 0;
+  }
+  .tx-out .tx-icon { background: #ff525215; color: var(--red); }
+  .tx-in .tx-icon { background: #00e67615; color: var(--green); }
+  .tx-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+  .tx-type { font-size: 13px; font-weight: 600; }
+  .tx-addr { font-size: 11px; color: var(--text3); }
+  .tx-right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+  .tx-val { font-size: 13px; font-weight: 700; }
+  .tx-out .tx-val { color: var(--red); }
+  .tx-in .tx-val { color: var(--green); }
+  .tx-date { font-size: 11px; color: var(--text3); }
+
+  /* ===== MARKET PAGE ===== */
+  .search-bar-wrap { padding: 16px 16px 8px; }
+  .search-bar {
+    display: flex; gap: 8px; background: var(--bg2);
+    border: 1px solid var(--border); border-radius: var(--radius2);
+    padding: 10px 14px; align-items: center;
+  }
+  .search-bar input { flex: 1; background: none; border: none; outline: none; color: var(--text); font-size: 14px; }
+  .search-bar input::placeholder { color: var(--text3); }
+  .market-list { padding: 0 16px; display: flex; flex-direction: column; gap: 8px; }
+  .market-item {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius2); padding: 12px;
+    cursor: pointer; transition: border-color 0.2s;
+  }
+  .market-item:hover { border-color: var(--border2); }
+  .market-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+  .coin-img { width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; }
+  .market-left > div { display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
+  .coin-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .coin-sym { font-size: 11px; color: var(--text3); text-transform: uppercase; }
+  .market-spark { flex-shrink: 0; }
+  .market-right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex-shrink: 0; }
+  .coin-price { font-size: 13px; font-weight: 700; }
+  .coin-change { font-size: 12px; font-weight: 600; }
+  .pos { color: var(--green); }
+  .neg { color: var(--red); }
+
+  /* DEX */
+  .dex-box { padding: 0 16px; }
+  .dex-search { display: flex; gap: 8px; margin-bottom: 12px; }
+  .dex-search input { flex: 1; background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius2); padding: 10px 14px; color: var(--text); outline: none; font-size: 14px; }
+  .dex-search input::placeholder { color: var(--text3); }
+  .dex-pair {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius2); padding: 12px; margin-bottom: 8px;
+  }
+  .dex-pair-name { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+  .dex-exchange { font-size: 11px; color: var(--text3); font-weight: 400; }
+  .dex-pair-info { display: flex; gap: 12px; font-size: 12px; color: var(--text2); flex-wrap: wrap; margin-bottom: 4px; }
+  .dex-chain { font-size: 11px; color: var(--text3); }
+  .dex-chain a { color: var(--blue); }
+
+  /* ===== SEND PAGE ===== */
+  .send-box { padding: 20px 16px; display: flex; flex-direction: column; gap: 16px; }
+  .send-box .field-group textarea {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius2); padding: 12px 14px;
+    color: var(--text); font-size: 14px; font-family: var(--font-mono);
+    resize: none; outline: none; width: 100%; transition: border-color 0.2s;
+  }
+  .send-box .field-group textarea:focus { border-color: var(--text3); }
+  .gas-row { display: flex; gap: 8px; }
+  .gas-chip {
+    flex: 1; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius2); padding: 10px; text-align: center;
+    font-size: 12px; cursor: pointer; transition: all 0.2s;
+  }
+  .gas-chip.active { border-color: var(--text3); }
+  .gas-chip-label { color: var(--text3); font-size: 10px; margin-bottom: 2px; }
+  .gas-chip-val { font-weight: 700; }
+
+  /* Receive */
+  .receive-box { padding: 20px 16px; display: flex; flex-direction: column; align-items: center; gap: 20px; }
+  .qr-box {
+    width: 200px; height: 200px;
+    background: white; border-radius: var(--radius);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; color: #333; text-align: center; padding: 16px;
+  }
+  .receive-addr {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius2); padding: 12px 16px;
+    font-size: 12px; word-break: break-all; text-align: center;
+    color: var(--text2); max-width: 320px; width: 100%;
+  }
+
+  /* ===== SOCIAL PAGE ===== */
+  .social-box { padding: 16px; }
+  .compose-box {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px; margin-bottom: 16px;
+  }
+  .compose-box textarea {
+    width: 100%; background: none; border: none; outline: none;
+    color: var(--text); font-family: var(--font-mono); font-size: 14px;
+    resize: none; min-height: 80px; line-height: 1.6;
+  }
+  .compose-box textarea::placeholder { color: var(--text3); }
+  .compose-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px; }
+  .compose-hint { font-size: 11px; color: var(--text3); }
+  .post-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius2); padding: 14px; margin-bottom: 10px;
+  }
+  .post-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .post-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--bg3); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; flex-shrink: 0;
+  }
+  .post-meta { display: flex; flex-direction: column; gap: 2px; }
+  .post-user { font-size: 13px; font-weight: 700; }
+  .post-time { font-size: 11px; color: var(--text3); }
+  .post-text { font-size: 14px; line-height: 1.6; margin-bottom: 12px; }
+  .post-actions { display: flex; gap: 8px; }
+  .post-btn {
+    font-size: 12px; color: var(--text3); padding: 4px 10px;
+    border: 1px solid var(--border); border-radius: 100px;
+    transition: all 0.2s;
+  }
+  .post-btn:hover { color: var(--text); border-color: var(--text3); }
+
+  /* ===== NEWS ===== */
+  .news-box { padding: 0 16px; }
+  .news-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius2); padding: 14px; margin-bottom: 10px;
+  }
+  .news-source { font-size: 11px; color: var(--text3); margin-bottom: 6px; }
+  .news-title { font-size: 14px; line-height: 1.5; display: block; color: var(--text); margin-bottom: 8px; }
+  .news-title:hover { color: var(--text2); }
+  .news-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tag { font-size: 10px; background: var(--bg3); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; color: var(--text3); }
+
+  /* ===== SETTINGS ===== */
+  .settings-box { padding: 20px 16px; }
+  .settings-profile {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px; margin-bottom: 20px;
+  }
+  .settings-avatar {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: var(--bg3); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; font-weight: 700;
+  }
+  .settings-info { flex: 1; }
+  .settings-name { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .settings-email { font-size: 12px; color: var(--text3); }
+  .settings-section { margin-bottom: 24px; }
+  .settings-section-title { font-family: var(--font-head); font-size: 11px; letter-spacing: 2px; color: var(--text3); text-transform: uppercase; margin-bottom: 10px; }
+  .settings-item {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius2); padding: 14px;
+    margin-bottom: 8px; cursor: pointer; transition: border-color 0.2s;
+  }
+  .settings-item:hover { border-color: var(--border2); }
+  .settings-item-left { display: flex; align-items: center; gap: 12px; }
+  .settings-item-icon { font-size: 18px; width: 28px; text-align: center; }
+  .settings-item-text { font-size: 14px; }
+  .settings-item-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+  .settings-arrow { color: var(--text3); font-size: 16px; }
+  .btn-danger {
+    background: #ff52521a; border: 1px solid #ff525240;
+    color: var(--red); border-radius: var(--radius2); padding: 14px;
+    font-family: var(--font-head); font-weight: 700; font-size: 13px; letter-spacing: 1px;
+    width: 100%; transition: all 0.2s;
+  }
+  .btn-danger:hover { background: #ff52523a; }
+
+  /* ===== MODAL ===== */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.8); backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center;
+    z-index: 1000; padding: 24px;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal-box {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 28px;
+    width: 100%; max-width: 380px;
+  }
+  .modal-title { font-family: var(--font-head); font-size: 18px; font-weight: 800; margin-bottom: 20px; }
+  .modal-detail { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 10px; }
+  .modal-detail .label { color: var(--text3); }
+  .modal-actions { display: flex; gap: 10px; margin-top: 24px; }
+  .modal-actions .btn-ghost { flex: 1; }
+  .modal-actions .btn-primary { flex: 1; }
+
+  /* Coin detail modal */
+  #coin-detail-modal .modal-box { max-width: 440px; }
+  .detail-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+  .detail-title { font-family: var(--font-head); font-size: 22px; font-weight: 800; }
+  .detail-symbol-badge {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 6px; padding: 4px 10px; font-size: 12px; color: var(--text2);
+  }
+  .detail-price { font-size: 28px; font-family: var(--font-head); font-weight: 800; margin-bottom: 6px; }
+  .detail-change { font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+  .detail-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .detail-stat { background: var(--bg3); border-radius: var(--radius2); padding: 12px; }
+  .detail-stat-label { font-size: 11px; color: var(--text3); margin-bottom: 4px; }
+  .detail-stat-val { font-size: 14px; font-weight: 700; }
+  .detail-desc { font-size: 13px; color: var(--text2); line-height: 1.6; }
+  .close-btn {
+    position: absolute; top: 16px; right: 16px;
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--bg3); border: 1px solid var(--border);
+    color: var(--text); font-size: 16px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.2s; z-index: 10;
+  }
+  .close-btn:hover { border-color: var(--text3); }
+
+  /* ===== TOAST ===== */
+  .toast {
+    position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius2); padding: 10px 20px;
+    font-size: 13px; z-index: 9999;
+    opacity: 0; transition: all 0.3s; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast-success { border-color: var(--green); color: var(--green); }
+  .toast-error { border-color: var(--red); color: var(--red); }
+  .toast-info { color: var(--text2); }
+
+  /* ===== MISC ===== */
+  .empty-msg, .loading-msg { text-align: center; color: var(--text3); font-size: 13px; padding: 24px; }
+  .page-inner-header {
+    font-family: var(--font-head); font-size: 18px; font-weight: 800;
+    padding: 20px 16px 8px; letter-spacing: 1px;
+  }
+  .tab-row { display: flex; border-bottom: 1px solid var(--border); margin: 0 16px 16px; }
+  .tab-btn {
+    padding: 10px 16px; font-family: var(--font-head); font-size: 12px;
+    font-weight: 700; letter-spacing: 1px; color: var(--text3);
+    cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s;
+    background: none;
+  }
+  .tab-btn.active { color: var(--text); border-bottom-color: var(--text); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* ===== IMPORT WALLET ===== */
+  #page-import {
+    align-items: center; justify-content: center; padding: 24px;
+    background: var(--bg);
+  }
+  .import-box {
+    width: 100%; max-width: 440px;
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 32px;
+  }
+  .import-box .logo { justify-content: center; margin-bottom: 28px; }
+  .import-box h2 { font-family: var(--font-head); font-size: 20px; font-weight: 800; margin-bottom: 20px; text-align: center; }
+
+  /* ===== RESPONSIVE ===== */
+  @media (min-width: 480px) {
+    .auth-box { padding: 48px 40px; }
+    .seed-grid { grid-template-columns: repeat(4, 1fr); }
+  }
+  @media (max-width: 360px) {
+    .wallet-balance { font-size: 24px; }
+    .bottom-nav .nav-item { font-size: 9px; }
+    .seed-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  .dex-buy {
+    font-size: 12px; padding: 8px 12px; border-radius: 8px; background: var(--green); color: #000; border: none; cursor: pointer; font-weight:700;
+  }
+  .dex-buy:hover { opacity: 0.9; }
+
+  @media (max-width: 480px) {
+    .market-item { align-items: flex-start; flex-wrap: wrap; gap: 8px; }
+    .market-left { flex-basis: 100%; display: flex; gap: 8px; align-items: center; }
+    .market-spark { order: 3; width: 100%; margin-top: 6px; }
+    .market-right { order: 2; align-items: flex-start; width: 100%; margin-top: 6px; }
+    .coin-img { width: 28px; height: 28px; }
+    .coin-name { font-size: 13px; }
+  }
+.market-demo-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  justify-content: flex-end;
+}
+.btn-demo-buy, .btn-demo-sell {
+  font-size: 10px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 600;
+}
+.btn-demo-buy:hover {
+  border-color: #00e676;
+  color: #00e676;
+  background: #00e67610;
+}
+.btn-demo-sell:hover {
+  border-color: #ff5252;
+  color: #ff5252;
+  background: #ff525210;
+}
+</style>
+</head>
+<body>
+
+<div class="app-wrapper">
+
+  <!-- ============================= LOGIN PAGE ============================= -->
+  <div class="page active" id="page-login">
+    <div class="auth-box">
+      <div class="logo">
+        <div class="logo-icon"><span class="app-logo-text">A</span></div>
+        <span class="logo-name app-name">AUREUS</span>
+      </div>
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="switchAuthTab('login')">ENTRAR</button>
+        <button class="auth-tab" onclick="switchAuthTab('register')">CRIAR CONTA</button>
+      </div>
+      <!-- Login -->
+      <div class="auth-form active" id="auth-form-login">
+        <div class="field-group">
+          <label class="field-label">Email</label>
+          <input class="field-input" id="login-email" type="email" placeholder="seu@email.com" autocomplete="email">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Senha</label>
+          <input class="field-input" id="login-pass" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')handleLogin()">
+        </div>
+        <button class="btn-primary" id="login-btn" onclick="handleLogin()">ENTRAR</button>
+      </div>
+      <!-- Register -->
+      <div class="auth-form" id="auth-form-register">
+        <div class="field-group">
+          <label class="field-label">Nome de usuário</label>
+          <input class="field-input" id="reg-username" type="text" placeholder="satoshi_dev">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Email</label>
+          <input class="field-input" id="reg-email" type="email" placeholder="seu@email.com">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Senha da conta</label>
+          <input class="field-input" id="reg-pass" type="password" placeholder="Min. 6 caracteres">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Confirmar senha</label>
+          <input class="field-input" id="reg-pass2" type="password" placeholder="Repita a senha">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Senha da carteira (criptografa sua seed)</label>
+          <input class="field-input" id="reg-wallet-pass" type="password" placeholder="Min. 8 caracteres — NUNCA perca!">
+        </div>
+        <button class="btn-primary" id="reg-btn" onclick="handleRegister()">CRIAR CONTA</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================= SEED PHRASE PAGE ============================= -->
+  <div class="page" id="page-seed">
+    <div class="seed-box">
+      <div class="logo" style="justify-content:center;margin-bottom:20px">
+        <div class="logo-icon"><span class="app-logo-text">A</span></div>
+        <span class="logo-name app-name">AUREUS</span>
+      </div>
+      <h2 style="font-family:var(--font-head);font-size:20px;font-weight:800;margin-bottom:8px">Sua Seed Phrase</h2>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:16px;line-height:1.6">Esta é a única forma de recuperar sua carteira. Anote em papel, offline.</p>
+      <div class="seed-warning"> NUNCA compartilhe estas palavras com ninguém. Quem tiver estas palavras tem acesso total aos seus fundos.</div>
+      <div class="seed-grid" id="seed-display"></div>
+      <div style="display:flex;gap:10px;margin-top:8px">
+        <button class="btn-ghost" style="flex:1" onclick="copySeed()"> Copiar</button>
+        <button class="btn-primary" style="flex:1" onclick="showPage('dashboard');initApp()">Entendi, continuar </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================= IMPORT WALLET PAGE ============================= -->
+  <div class="page" id="page-import">
+    <div class="import-box">
+      <div class="logo" style="justify-content:center;margin-bottom:24px">
+        <div class="logo-icon"><span class="app-logo-text">A</span></div>
+        <span class="logo-name app-name">AUREUS</span>
+      </div>
+      <h2>Importar Carteira</h2>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="field-group">
+          <label class="field-label">Seed Phrase (12 ou 24 palavras)</label>
+          <textarea class="field-input" id="import-mnemonic" rows="3" placeholder="word1 word2 word3 ... word12" style="resize:none"></textarea>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Senha para criptografar</label>
+          <input class="field-input" id="import-pass" type="password" placeholder="Senha de proteção local">
+        </div>
+        <button class="btn-primary" onclick="handleImportWallet()">IMPORTAR CARTEIRA</button>
+        <button class="btn-ghost" onclick="showPage('dashboard')">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================= MAIN APP SHELL ============================= -->
+  <div class="page" id="page-dashboard">
+    <div class="app-shell">
+      <!-- Top Bar -->
+      <div class="top-bar">
+        <div class="logo">
+          <div class="logo-icon"><span class="app-logo-text">A</span></div>
+          <span class="logo-name app-name">AUREUS</span>
+        </div>
+        <div class="top-bar-right">
+          <div class="gas-bar" id="gas-display">Gas: —</div>
+          <div class="avatar-btn user-avatar-letter" onclick="switchInnerPage('settings')">U</div>
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <div class="main-content">
+
+        <!-- WALLET INNER PAGE -->
+        <div class="inner-page active" id="inner-wallet">
+          <!-- Wallet Card -->
+          <div class="wallet-card">
+            <div class="wallet-network">
+              <span class="network-badge" id="network-badge">Ethereum</span>
+            </div>
+            <div class="wallet-addr-row">
+                <span class="wallet-addr" id="wallet-address-display">0x0000...0000</span>
+                <button class="copy-btn" onclick="copyReceiveAddress()">COPIAR</button>
+            </div>
+            <div class="wallet-balance" id="wallet-balance">0.000000 ETH</div>
+            <div class="wallet-usd" id="wallet-usd">≈ $0.00</div>
+            <div class="wallet-actions">
+              <button class="action-btn" onclick="switchInnerPage('send')"><span class="icon"></span>Enviar</button>
+              <button class="action-btn" onclick="switchInnerPage('receive')"><span class="icon"></span>Receber</button>
+              <button class="action-btn" onclick="switchInnerPage('swap')"><span class="icon"></span>Swap</button>
+              <button class="action-btn" onclick="updateDashboard()"><span class="icon"></span>Atualizar</button>
+            </div>
+          </div>
+          <!-- Network Selector -->
+          <div class="section-header">
+            <span class="section-title">REDE</span>
+          </div>
+          <div class="net-scroll">
+            <div class="net-option active" data-net="ethereum" onclick="switchNetwork('ethereum')">
+              <span class="net-dot" style="background:#627EEA"></span> Ethereum
+            </div>
+            <div class="net-option" data-net="bsc" onclick="switchNetwork('bsc')">
+              <span class="net-dot" style="background:#F3BA2F"></span> BNB Chain
+            </div>
+            <div class="net-option" data-net="polygon" onclick="switchNetwork('polygon')">
+              <span class="net-dot" style="background:#8247E5"></span> Polygon
+            </div>
+            <div class="net-option" data-net="arbitrum" onclick="switchNetwork('arbitrum')">
+              <span class="net-dot" style="background:#28A0F0"></span> Arbitrum
+            </div>
+          </div>
+          <!-- Transactions -->
+          <div class="section-header" style="margin-top:16px">
+            <span class="section-title">TRANSAÇÕES RECENTES</span>
+            <span style="font-size:11px;color:var(--text3);cursor:pointer">Ver todas</span>
+          </div>
+          <div class="tx-list" id="tx-list">
+            <p class="empty-msg">Nenhuma transação</p>
+          </div>
+       <!-- Dentro de inner-wallet, após transações -->
+<div class="section-header"><span class="section-title">MEU PORTFÓLIO DEMO</span></div>
+<div class="portfolio-card" style="margin:0 16px 20px;background:var(--bg2);border-radius:var(--radius);padding:16px;">
+  <canvas id="portfolio-chart" width="200" height="200" style="max-width:200px;margin:0 auto;"></canvas>
+  <div id="portfolio-total" style="text-align:center;font-size:24px;font-weight:800;">$0.00</div>
+  <div id="portfolio-investments"></div>
+  <div class="portfolio-actions" style="display:flex;gap:10px;margin-top:12px;">
+    <button class="btn-ghost" onclick="loadDemoPortfolio()">Atualizar</button>
+  </div>
+</div>
+        </div>
+
+        <!-- SEND INNER PAGE -->
+        <div class="inner-page" id="inner-send">
+          <div style="display:flex;align-items:center;gap:12px;padding:16px 16px 0">
+            <button onclick="switchInnerPage('wallet')" style="color:var(--text3);font-size:18px;padding:4px"></button>
+            <h2 class="page-inner-header" style="padding:0">Enviar</h2>
+          </div>
+          <div class="send-box">
+            <div class="field-group">
+              <label class="field-label">Endereço destinatário</label>
+              <textarea class="field-input" id="send-to" rows="2" placeholder="0x..."></textarea>
+            </div>
+            <div class="field-group">
+              <label class="field-label">Valor</label>
+              <div style="display:flex;gap:8px">
+                <input class="field-input" id="send-amount" type="number" placeholder="0.00" step="0.0001" style="flex:1">
+                <select class="field-input" style="width:90px" id="send-token">
+                  <option>ETH</option><option>BNB</option><option>MATIC</option>
+                </select>
+              </div>
+            </div>
+            <div class="field-group">
+              <label class="field-label">Velocidade da transação</label>
+              <div class="gas-row">
+                <div class="gas-chip active" onclick="selectGas(this,'slow')">
+                  <div class="gas-chip-label">LENTO</div>
+                  <div class="gas-chip-val"></div>
+                </div>
+                <div class="gas-chip" onclick="selectGas(this,'medium')">
+                  <div class="gas-chip-label">NORMAL</div>
+                  <div class="gas-chip-val"></div>
+                </div>
+                <div class="gas-chip" onclick="selectGas(this,'fast')">
+                  <div class="gas-chip-label">RÁPIDO</div>
+                  <div class="gas-chip-val"></div>
+                  <div class="gas-bar" id="gas-display">Carregando gás...</div>
+                </div>
+              </div>
+            </div>
+            <button class="btn-primary" onclick="sendTransaction()">REVISAR TRANSAÇÃO</button>
+          </div>
+        </div>
+
+        <!-- RECEIVE INNER PAGE -->
+        <div class="inner-page" id="inner-receive">
+          <div style="display:flex;align-items:center;gap:12px;padding:16px 16px 0">
+            <button onclick="switchInnerPage('wallet')" style="color:var(--text3);font-size:18px;padding:4px"></button>
+            <h2 class="page-inner-header" style="padding:0">Receber</h2>
+          </div>
+          <div class="receive-box">
+            <p style="font-size:13px;color:var(--text2);text-align:center">Envie criptos para o endereço abaixo. Apenas na rede selecionada.</p>
+            <div class="qr-box" id="qr-box">
+              <br><br>QR Code<br><small style="font-size:10px">(integre biblioteca qrcode.js)</small>
+            </div>
+            <div class="receive-addr" id="receive-addr-display">—</div>
+            <button class="btn-primary" style="width:100%;max-width:320px" onclick="copyReceiveAddress()"> COPIAR ENDEREÇO</button>
+            <div class="pix-panel" style="width:100%;max-width:320px;margin-top:16px;padding:16px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <span class="section-title" style="font-size:14px;margin:0">MoonPay</span>
+                <span style="font-size:11px;color:var(--text3)">Compra com MoonPay</span>
+              </div>
+              <div class="field-group" style="margin-bottom:10px">
+                <label class="field-label">Valor em BRL</label>
+                <input class="field-input" id="moonpay-amount" type="number" step="0.01" placeholder="100.00" />
+              </div>
+              <button class="btn-primary" style="margin-bottom:12px" onclick="openMoonPay()">ABRIR MOONPAY</button>
+              <div style="font-size:12px;color:var(--text3);line-height:1.4;">
+                O backend MoonPay gera o checkout seguro. Configure a chave pública em seu servidor e execute o backend em localhost.
+              </div>
+            </div>
+            <button class="btn-ghost" style="width:100%;max-width:320px;margin-top:16px" onclick="shareAddress()"> COMPARTILHAR</button>
+          </div>
+        </div>
+
+        <!-- SWAP INNER PAGE -->
+        <div class="inner-page" id="inner-swap">
+          <div style="display:flex;align-items:center;gap:12px;padding:16px 16px 0">
+            <button onclick="switchInnerPage('wallet')" style="color:var(--text3);font-size:18px;padding:4px"></button>
+            <h2 class="page-inner-header" style="padding:0">Swap (DEX)</h2>
+          </div>
+          <div style="padding:16px">
+            <div class="field-group" style="margin-bottom:12px">
+              <label class="field-label">De</label>
+              <div style="display:flex;gap:8px">
+                <input class="field-input" type="number" placeholder="0.00" style="flex:1">
+                <select class="field-input" style="width:90px"><option>ETH</option><option>USDT</option><option>BNB</option></select>
+              </div>
+            </div>
+            <div style="text-align:center;margin:12px 0;color:var(--text3);font-size:20px"></div>
+            <div class="field-group" style="margin-bottom:20px">
+              <label class="field-label">Para</label>
+              <div style="display:flex;gap:8px">
+                <input class="field-input" type="number" placeholder="0.00" style="flex:1" readonly>
+                <select class="field-input" style="width:90px"><option>USDT</option><option>ETH</option><option>BNB</option></select>
+              </div>
+            </div>
+ 
+            <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);padding:12px;font-size:12px;color:var(--text2);margin-bottom:16px">
+              <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>Rota</span><span>Uniswap V3</span></div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span>Slippage</span><span>0.5%</span></div>
+              <div style="display:flex;justify-content:space-between"><span>Gas estimado</span><span id="swap-gas">—</span></div>
+            </div>
+            <button class="btn-primary" onclick="showToast('Conecte ethers.js para swap real via Uniswap','info')">FAZER SWAP</button>
+          </div>
+        </div>
+
+        <!-- MARKET INNER PAGE -->
+        <div class="inner-page" id="inner-market">
+          <div class="page-inner-header">Mercado</div>
+          <div class="tab-row">
+            <button class="tab-btn active" onclick="switchTab(this,'market-top')">Top Coins</button>
+            <button class="tab-btn" onclick="switchTab(this,'market-dex')">DEX Search</button>
+          </div>
+          <div class="tab-content active" id="market-top">
+            <div class="search-bar-wrap">
+              <div class="search-bar">
+                <span style="color:var(--text3)"></span>
+                <input type="text" placeholder="Buscar moeda..." id="market-search" oninput="filterMarket(this.value)">
+              </div>
+            </div>
+            <div class="market-list" id="market-list">
+              <p class="loading-msg">Carregando mercado...</p>
+            </div>
+          </div>
+          <div class="tab-content" id="market-dex">
+            <div class="dex-box" style="padding-top:16px">
+              <div class="dex-search">
+                <input type="text" id="dex-query" placeholder="Buscar token (ex: PEPE, SHIB, FLOKI)..." onkeydown="if(event.key==='Enter')dexSearch()">
+                <button class="btn-primary" style="width:auto;padding:10px 16px" onclick="dexSearch()">Buscar</button>
+              </div>
+              <div id="dex-results">
+                <p class="empty-msg">Digite um símbolo ou endereço de token</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SOCIAL INNER PAGE -->
+        <div class="inner-page" id="inner-social">
+          <div class="tab-row" style="margin:16px 16px 0">
+            <button class="tab-btn active" onclick="switchTab(this,'social-community')">Comunidade</button>
+            <button class="tab-btn" onclick="switchTab(this,'social-news');loadNews()">Notícias</button>
+          </div>
+          <div class="tab-content active" id="social-community">
+            <div class="social-box">
+              <div class="compose-box">
+                <textarea id="post-input" placeholder="O que está acontecendo no crypto? " maxlength="500"></textarea>
+                <div class="compose-actions">
+                  <span class="compose-hint">Máx. 500 caracteres</span>
+                  <button class="btn-primary" style="width:auto;padding:8px 20px;font-size:12px" onclick="window.submitPost()">PUBLICAR</button>
+                </div>
+              </div>
+              <div id="social-feed">
+                <p class="loading-msg">Carregando feed...</p>
+              </div>
+            </div>
+          </div>
+          <div class="tab-content" id="social-news">
+            <div class="news-box" style="padding-top:16px">
+              <div id="news-feed">
+                <p class="loading-msg">Carregando notícias...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SETTINGS INNER PAGE -->
+        <div class="inner-page" id="inner-settings">
+          <div class="page-inner-header">Configurações</div>
+          <div class="settings-box">
+            <div class="settings-profile">
+              <div class="settings-avatar user-avatar-letter">U</div>
+              <div class="settings-info">
+                <div class="settings-name user-display-name">Usuário</div>
+                <div class="settings-email user-email">email@email.com</div>
+              </div>
+            </div>
+
+            <div class="settings-section">
+              <div class="settings-section-title">Carteira</div>
+              <div class="settings-item" onclick="showPage('import')">
+                <div class="settings-item-left">
+                  <span class="settings-item-icon"></span>
+                  <div>
+                    <div class="settings-item-text">Importar carteira</div>
+                    <div class="settings-item-sub">Via seed phrase</div>
+                  </div>
+                </div>
+                <span class="settings-arrow">›</span>
+              </div>
+              <div class="settings-item" onclick="exportSeed()">
+                <div class="settings-item-left">
+                  <span class="settings-item-icon"></span>
+                  <div>
+                    <div class="settings-item-text">Ver seed phrase</div>
+                    <div class="settings-item-sub">Requer senha da carteira</div>
+                  </div>
+                </div>
+                <span class="settings-arrow">›</span>
+              </div>
+            </div>
+
+            <div class="settings-section">
+              <div class="settings-section-title">Conta</div>
+              <div class="settings-item" onclick="toggleLanguage()">
+                <div class="settings-item-left">
+                  <span class="settings-item-icon"></span>
+                  <div>
+                    <div class="settings-item-text">Idioma</div>
+                    <div class="settings-item-sub">Português (BR)</div>
+                  </div>
+                </div>
+                <span class="settings-arrow" onclick="toggleLanguage()">›</span>
+              </div>
+              <div class="settings-item" onclick="toggleNotifications()">
+                <div class="settings-item-left">
+                  <span class="settings-item-icon"></span>
+                  <div>
+                    <div class="settings-item-text">Notificações</div>
+                    <div class="settings-item-sub">Preços e transações</div>
+                  </div>
+                </div>
+                <span class="settings-arrow" onclick="toggleNotifications()">›</span>
+              </div>
+            </div>
+
+            <div class="settings-section">
+              <div class="settings-section-title">Desenvolvedores</div>
+              <div style="padding:12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text2);font-size:13px;line-height:1.6;">
+                <ul style="list-style:none;padding-left:0;margin:0">
+                  <li>Hugo</li>
+                  <li>Daniel Cota</li>
+                  <li>Joao pedro</li>
+                  <li>fabricio</li>
+                  <li>julho cesar</li>
+                  <li>mateus</li>
+                  <li>thiago</li>
+                </ul>
+              </div>
+            </div>
+
+            <button class="btn-danger" onclick="handleLogout()">SAIR DA CONTA</button>
+          </div>
+        </div>
+
+        <!-- DAPP INNER PAGE -->
+        <div class="inner-page" id="inner-dapp">
+          <div class="page-inner-header"></div>
+          <div style="display: flex; height: 2100px; padding: 0 16px 24px;">
+            <iframe src="https://timely-yeot-9f52f7.netlify.app/" style="width: 100%; height: 100%; border: none; border-radius: var(--radius); background: var(--bg2);"></iframe>
+          </div>
+        </div>
+      </div><!-- end main-content -->
+
+      <!-- Bottom Nav -->
+<nav class="bottom-nav">
+  <div class="nav-item active" data-page="wallet" onclick="switchInnerPage('wallet')">
+    <span class="nav-icon"></span> CARTEIRA
+  </div>
+  <div class="nav-item" data-page="market" onclick="switchInnerPage('market')">
+    <span class="nav-icon"></span> MERCADO
+  </div>
+  <div class="nav-item" data-page="social" onclick="switchInnerPage('social'); window.loadSocialFeed && window.loadSocialFeed()">
+    <span class="nav-icon"></span> SOCIAL
+  </div>
+  <div class="nav-item" data-page="dapp" onclick="switchInnerPage('dapp')">
+    <span class="nav-icon"></span> TRADER
+  </div>
+  <div class="nav-item" data-page="settings" onclick="switchInnerPage('settings')">
+    <span class="nav-icon"></span> CONTA
+  </div>
+</nav>
+    </div>
+  </div><!-- end page-dashboard -->
+
+</div><!-- end app-wrapper -->
+
+<!-- ===== CONFIRM SEND MODAL ===== -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal-box" style="position:relative">
+    <button class="close-btn" onclick="$('confirm-modal').style.display='none'">×</button>
+    <div class="modal-title">Confirmar Envio</div>
+    <div class="modal-detail"><span class="label">Para</span><span id="confirm-to">—</span></div>
+    <div class="modal-detail"><span class="label">Valor</span><span id="confirm-amount">—</span></div>
+    <div class="modal-detail"><span class="label">Gas</span><span id="confirm-gas">—</span></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="$('confirm-modal').style.display='none'">Cancelar</button>
+      <button class="btn-primary" onclick="confirmSend()">CONFIRMAR</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== COIN DETAIL MODAL ===== -->
+<div class="modal-overlay" id="coin-detail-modal">
+  <div class="modal-box" style="position:relative;max-width:440px">
+    <button class="close-btn" onclick="$('coin-detail-modal').style.display='none'">×</button>
+    <div class="detail-header">
+      <div class="detail-title" id="detail-name">—</div>
+      <span class="detail-symbol-badge" id="detail-symbol">—</span>
+    </div>
+    <div class="detail-price" id="detail-price">—</div>
+    <div class="detail-change" id="detail-change">—</div>
+    <div class="detail-stats">
+      <div class="detail-stat">
+        <div class="detail-stat-label">Market Cap</div>
+        <div class="detail-stat-val" id="detail-mktcap">—</div>
+      </div>
+      <div class="detail-stat">
+        <div class="detail-stat-label">Volume 24h</div>
+        <div class="detail-stat-val" id="detail-vol">—</div>
+      </div>
+    </div>
+    <div class="detail-desc" id="detail-desc"></div>
+  </div>
+</div>
+<style>
+  .comment-item { background: var(--bg3); padding: 10px; border-radius: 8px; margin-bottom: 8px; }
+  .btn-small { background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; font-size: 11px; cursor: pointer; }
+  .portfolio-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 8px; }
+  .btn-demo-buy, .btn-demo-sell { font-size: 10px; padding: 4px 8px; margin-left: 6px; border-radius: 6px; background: var(--bg3); border: 1px solid var(--border); cursor: pointer; transition: all 0.2s; }
+  .btn-demo-buy:hover { border-color: #00e676; color: #00e676; }
+  .btn-demo-sell:hover { border-color: #ff5252; color: #ff5252; }
+</style>
+</body>
+</html>
