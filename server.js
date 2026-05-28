@@ -114,7 +114,7 @@ app.post("/moonpay/webhook", (req, res) => {
 // Servindo o front-end
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const frontFile = path.join(__dirname, "CRYPTEX.html");
+const frontFile = path.join(__dirname, "octocookie.html");
 
 app.get("/", (_req, res) => res.sendFile(frontFile));
 app.get("/cryptex.html", (_req, res) => res.sendFile(frontFile));

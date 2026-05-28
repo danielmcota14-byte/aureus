@@ -1,0 +1,1674 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OCTOCOOKIE — Carteira Digital</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #060606;
+      --bg2: rgba(255,255,255,0.04);
+      --bg3: rgba(255,255,255,0.08);
+      --bg4: rgba(255,255,255,0.13);
+      --border: rgba(255,255,255,0.09);
+      --border2: rgba(255,255,255,0.2);
+      --text: #f0f0f0;
+      --text2: rgba(240,240,240,0.6);
+      --text3: rgba(240,240,240,0.3);
+      --radius: 18px;
+      --radius2: 12px;
+      --font-mono: 'Space Mono', monospace;
+      --font-head: 'Syne', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 50% at 20% 30%, rgba(255,255,255,0.025) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 60% at 80% 70%, rgba(255,255,255,0.015) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* CURSOR GLOW */
+    .cursor-glow {
+      position: fixed;
+      width: 500px;
+      height: 500px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,255,255,0.065) 0%, rgba(255,255,255,0.015) 40%, transparent 70%);
+      pointer-events: none;
+      z-index: 1;
+      transform: translate(-50%, -50%);
+      transition: left 0.05s linear, top 0.05s linear;
+      mix-blend-mode: screen;
+    }
+
+    /* ---- WRAPPER ---- */
+    .page-wrap {
+      position: relative;
+      z-index: 2;
+    }
+
+    /* ---- NAV ---- */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 40px;
+      background: rgba(6,6,6,0.7);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .nav-logo-icon {
+      width: 38px;
+      height: 38px;
+    }
+
+    .nav-logo-name {
+      font-family: var(--font-head);
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      color: var(--text);
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 28px;
+    }
+
+    .nav-links a {
+      color: var(--text3);
+      text-decoration: none;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--text); }
+
+    .nav-cta {
+      padding: 9px 20px;
+      background: var(--text);
+      color: #050505 !important;
+      border-radius: 10px;
+      font-size: 11px !important;
+      font-weight: 700 !important;
+      letter-spacing: 0.08em !important;
+      transition: opacity 0.2s !important;
+    }
+
+    .nav-cta:hover { opacity: 0.85 !important; }
+
+    @media (max-width: 640px) {
+      nav { padding: 12px 18px; }
+      .nav-links { gap: 14px; }
+      .nav-links a:not(.nav-cta) { display: none; }
+    }
+
+    /* ---- HERO ---- */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 120px 24px 80px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-mascot {
+      width: 200px;
+      height: 230px;
+      margin: 0 auto 36px;
+    }
+
+    .hero-kicker {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.22em;
+      color: var(--text3);
+      text-transform: uppercase;
+      margin-bottom: 18px;
+      animation: fadeInUp 0.6s ease both;
+    }
+
+    .hero-title {
+      font-family: var(--font-head);
+      font-size: clamp(40px, 8vw, 88px);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.0;
+      color: var(--text);
+      margin-bottom: 24px;
+      animation: fadeInUp 0.7s ease 0.1s both;
+    }
+
+    .hero-title span {
+      position: relative;
+      display: inline-block;
+    }
+
+    .hero-title span::after {
+      content: '';
+      position: absolute;
+      bottom: 4px; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
+      border-radius: 2px;
+    }
+
+    .hero-sub {
+      max-width: 560px;
+      font-size: 15px;
+      color: var(--text2);
+      line-height: 1.7;
+      margin-bottom: 36px;
+      animation: fadeInUp 0.8s ease 0.2s both;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      animation: fadeInUp 0.9s ease 0.3s both;
+      margin-bottom: 72px;
+    }
+
+    .btn-hero-primary {
+      padding: 15px 32px;
+      background: var(--text);
+      color: #050505;
+      border: none;
+      border-radius: var(--radius2);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      text-decoration: none;
+      transition: opacity 0.2s, transform 0.2s, box-shadow 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-hero-primary::after {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 50%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: left 0.5s ease;
+    }
+
+    .btn-hero-primary:hover { opacity: 0.9; transform: translateY(-2px); box-shadow: 0 10px 32px rgba(255,255,255,0.12); }
+    .btn-hero-primary:hover::after { left: 150%; }
+
+    .btn-hero-ghost {
+      padding: 14px 32px;
+      background: transparent;
+      color: var(--text2);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius2);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-hero-ghost:hover { background: var(--bg3); color: var(--text); border-color: var(--border2); transform: translateY(-2px); }
+
+    /* hero scroll indicator */
+    .hero-scroll {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      color: var(--text3);
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      animation: fadeInUp 1s ease 0.5s both;
+    }
+
+    .scroll-line {
+      width: 1px;
+      height: 50px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.3), transparent);
+      animation: scrollPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes scrollPulse {
+      0%,100% { opacity: 0.4; transform: scaleY(1); }
+      50% { opacity: 1; transform: scaleY(0.7); }
+    }
+
+    /* ---- FEATURE STRIP ---- */
+    .feature-strip {
+      display: flex;
+      gap: 0;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      overflow-x: auto;
+      scrollbar-width: none;
+      padding: 0;
+    }
+
+    .feature-strip::-webkit-scrollbar { display: none; }
+
+    .fs-item {
+      flex: 1;
+      min-width: 160px;
+      padding: 22px 20px;
+      border-right: 1px solid var(--border);
+      text-align: center;
+      transition: background 0.2s;
+    }
+
+    .fs-item:last-child { border-right: none; }
+    .fs-item:hover { background: var(--bg3); }
+
+    .fs-icon { font-size: 24px; margin-bottom: 8px; display: block; }
+    .fs-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: var(--text2);
+      text-transform: uppercase;
+    }
+
+    /* ---- SECTIONS ---- */
+    section {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 96px 24px;
+    }
+
+    .section-tag {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      color: var(--text3);
+      text-transform: uppercase;
+      margin-bottom: 14px;
+      padding: 4px 12px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+    }
+
+    .section-title {
+      font-family: var(--font-head);
+      font-size: clamp(28px, 4vw, 48px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+
+    .section-sub {
+      font-size: 15px;
+      color: var(--text2);
+      line-height: 1.7;
+      max-width: 540px;
+    }
+
+    /* ---- FEATURES GRID ---- */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+      margin-top: 52px;
+    }
+
+    .feature-card {
+      padding: 26px 22px;
+      background: rgba(255,255,255,0.04);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.06);
+      transition: transform 0.25s, border-color 0.25s, box-shadow 0.25s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: -60%; left: -30%;
+      width: 160%;
+      height: 80%;
+      background: radial-gradient(ellipse, rgba(255,255,255,0.025) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--border2);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.1);
+    }
+
+    .fc-icon {
+      font-size: 32px;
+      margin-bottom: 14px;
+      display: block;
+    }
+
+    .fc-title {
+      font-family: var(--font-head);
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: 0.01em;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .fc-desc {
+      font-size: 13px;
+      color: var(--text2);
+      line-height: 1.6;
+    }
+
+    /* ---- MOCKUP SECTION ---- */
+    .mockup-section {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      align-items: center;
+    }
+
+    @media (max-width: 720px) {
+      .mockup-section { grid-template-columns: 1fr; gap: 32px; }
+    }
+
+    .mockup-phone {
+      width: 260px;
+      max-width: 100%;
+      margin: 0 auto;
+      aspect-ratio: 9/19;
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--border2);
+      border-radius: 36px;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.12);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 18px;
+      gap: 14px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .mockup-phone::before {
+      content: '';
+      position: absolute;
+      top: 12px; left: 50%;
+      transform: translateX(-50%);
+      width: 50px; height: 5px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 3px;
+    }
+
+    .mock-balance {
+      font-family: var(--font-head);
+      font-size: 32px;
+      font-weight: 800;
+      text-align: center;
+      letter-spacing: -0.02em;
+    }
+
+    .mock-addr {
+      font-size: 10px;
+      color: var(--text3);
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 12px;
+      letter-spacing: 0.06em;
+      width: 100%;
+      text-align: center;
+    }
+
+    .mock-actions {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      width: 100%;
+    }
+
+    .mock-action {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 4px;
+      text-align: center;
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: var(--text2);
+    }
+
+    .mock-coins {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .mock-coin {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 10px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 11px;
+    }
+
+    .mock-coin-sym { font-weight: 700; }
+    .mock-coin-price { color: var(--text2); }
+    .mock-coin-chg { font-weight: 700; font-size: 10px; }
+    .mc-green { color: #7fff7f; }
+    .mc-red { color: #ff7f7f; }
+
+    /* ---- SECURITY SECTION ---- */
+    .security-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+      margin-top: 48px;
+    }
+
+    .sec-card {
+      padding: 22px 18px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius2);
+      transition: background 0.2s, border-color 0.2s;
+    }
+
+    .sec-card:hover { background: var(--bg3); border-color: var(--border2); }
+
+    .sec-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: rgba(100,255,100,0.07);
+      border: 1px solid rgba(100,255,100,0.18);
+      border-radius: 20px;
+      color: #7fff7f;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      margin-bottom: 12px;
+    }
+
+    .sec-title {
+      font-family: var(--font-head);
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .sec-desc { font-size: 12px; color: var(--text3); line-height: 1.5; }
+
+    /* ---- STATS ---- */
+    .stats-bar {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      background: rgba(255,255,255,0.03);
+      backdrop-filter: blur(16px);
+      margin-top: 56px;
+    }
+
+    .stat-item {
+      padding: 32px 24px;
+      border-right: 1px solid var(--border);
+      text-align: center;
+    }
+
+    .stat-item:last-child { border-right: none; }
+
+    .stat-num {
+      font-family: var(--font-head);
+      font-size: 40px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: var(--text3);
+      text-transform: uppercase;
+    }
+
+    /* ---- CTA SECTION ---- */
+    .cta-section {
+      text-align: center;
+      padding: 96px 24px;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,0.018);
+      backdrop-filter: blur(10px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cta-section::before {
+      content: '';
+      position: absolute;
+      top: -50%; left: 50%;
+      transform: translateX(-50%);
+      width: 600px; height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,255,255,0.035) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .cta-mascot {
+      width: 130px;
+      height: 150px;
+      margin: 0 auto 32px;
+    }
+
+    .cta-title {
+      font-family: var(--font-head);
+      font-size: clamp(28px, 4vw, 52px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+
+    .cta-sub {
+      font-size: 14px;
+      color: var(--text2);
+      max-width: 460px;
+      margin: 0 auto 36px;
+      line-height: 1.7;
+    }
+
+    .cta-contact {
+      margin-top: 32px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .cta-contact-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      color: var(--text3);
+      text-transform: uppercase;
+    }
+
+    .cta-phone {
+      font-family: var(--font-head);
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: 0.04em;
+      text-decoration: none;
+      transition: opacity 0.2s;
+    }
+
+    .cta-phone:hover { opacity: 0.75; }
+
+    .cta-phone-sub {
+      font-size: 11px;
+      color: var(--text3);
+      margin-top: 2px;
+    }
+
+    .contact-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 20px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-top: 18px;
+      font-size: 13px;
+    }
+
+    .contact-badge-icon { font-size: 20px; }
+    .contact-badge-text { color: var(--text2); }
+    .contact-badge-text strong { color: var(--text); font-size: 16px; display: block; }
+
+    /* ---- FOOTER ---- */
+    footer {
+      padding: 36px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .footer-logo {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .footer-logo-icon { width: 28px; height: 28px; }
+
+    .footer-logo-name {
+      font-family: var(--font-head);
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      color: var(--text2);
+    }
+
+    .footer-note {
+      font-size: 11px;
+      color: var(--text3);
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 18px;
+    }
+
+    .footer-links a {
+      font-size: 11px;
+      color: var(--text3);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .footer-links a:hover { color: var(--text2); }
+
+    /* ---- ANIMATIONS ---- */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes bob {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+    }
+
+    @keyframes tentacle-wave {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(4deg); }
+      75% { transform: rotate(-4deg); }
+    }
+
+    @keyframes tentacle-wave2 {
+      0%, 100% { transform: rotate(0deg); }
+      33% { transform: rotate(-5deg); }
+      66% { transform: rotate(5deg); }
+    }
+
+    @keyframes blink {
+      0%, 90%, 100% { transform: scaleY(1); }
+      95% { transform: scaleY(0.1); }
+    }
+
+    .mascot-svg { animation: bob 3s ease-in-out infinite; }
+    .mascot-svg .mt1 { transform-origin: 80px 130px; animation: tentacle-wave 2s ease-in-out infinite; }
+    .mascot-svg .mt2 { transform-origin: 80px 130px; animation: tentacle-wave2 2.3s ease-in-out infinite; }
+    .mascot-svg .mt3 { transform-origin: 45px 112px; animation: tentacle-wave 2.6s ease-in-out infinite 0.2s; }
+    .mascot-svg .mt4 { transform-origin: 115px 112px; animation: tentacle-wave2 1.9s ease-in-out infinite 0.4s; }
+    .mascot-svg .mt5 { transform-origin: 36px 82px; animation: tentacle-wave 2.4s ease-in-out infinite 0.1s; }
+    .mascot-svg .mt6 { transform-origin: 124px 82px; animation: tentacle-wave2 2.1s ease-in-out infinite 0.3s; }
+    .mascot-svg .mt7 { transform-origin: 48px 50px; animation: tentacle-wave 2.8s ease-in-out infinite 0.5s; }
+    .mascot-svg .mt8 { transform-origin: 112px 50px; animation: tentacle-wave2 2.5s ease-in-out infinite 0.2s; }
+    .mascot-svg .pupil-l, .mascot-svg .pupil-r { animation: blink 4s ease-in-out infinite; transform-origin: center; }
+
+    .oc-tentacles .oc-t1 { transform-origin: 30px 46px; animation: tentacle-wave 2.2s ease-in-out infinite; }
+    .oc-tentacles .oc-t2 { transform-origin: 30px 46px; animation: tentacle-wave2 2.5s ease-in-out infinite 0.3s; }
+    .oc-tentacles .oc-t3 { transform-origin: 14px 38px; animation: tentacle-wave 2s ease-in-out infinite 0.2s; }
+    .oc-tentacles .oc-t4 { transform-origin: 46px 38px; animation: tentacle-wave2 2.7s ease-in-out infinite; }
+    .oc-tentacles .oc-t5 { transform-origin: 12px 24px; animation: tentacle-wave 1.8s ease-in-out infinite 0.1s; }
+    .oc-tentacles .oc-t6 { transform-origin: 48px 24px; animation: tentacle-wave2 2.3s ease-in-out infinite 0.4s; }
+    .oc-tentacles .oc-t7 { transform-origin: 17px 12px; animation: tentacle-wave 2.6s ease-in-out infinite; }
+    .oc-tentacles .oc-t8 { transform-origin: 43px 12px; animation: tentacle-wave2 2.1s ease-in-out infinite 0.2s; }
+
+    /* scroll reveal */
+    .reveal {
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity 0.55s ease, transform 0.55s ease;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* phone glow */
+    .phone-glow {
+      position: relative;
+    }
+
+    .phone-glow::after {
+      content: '';
+      position: absolute;
+      bottom: -40px; left: 50%;
+      transform: translateX(-50%);
+      width: 70%;
+      height: 40px;
+      background: radial-gradient(ellipse, rgba(255,255,255,0.12) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+
+    @media (max-width: 640px) {
+      section { padding: 64px 18px; }
+      .stats-bar { grid-template-columns: 1fr 1fr; }
+      .stat-item { border-bottom: 1px solid var(--border); }
+      .stat-item:last-child, .stat-item:nth-last-child(2):nth-child(odd) { border-bottom: none; }
+      footer { flex-direction: column; align-items: flex-start; padding: 24px 18px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Cursor glow -->
+  <div class="cursor-glow" id="cursorGlow"></div>
+
+  <div class="page-wrap">
+
+    <!-- NAV -->
+    <nav>
+      <a class="nav-logo" href="#">
+        <div class="nav-logo-icon">
+          <svg viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect x="16" y="0" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="0" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="0" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="0" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="0" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="0" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="0" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="0" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="80" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="0" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="80" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="88" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="0" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="80" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="88" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="0" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="80" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="88" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="0" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="80" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="88" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="0" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="80" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="88" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="0" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="80" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="88" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="80" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="72" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="72" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="72" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="72" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="72" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="72" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="72" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="72" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="16" width="8" height="8" fill="#1a1a1a"/>
+  <rect x="64" y="8" width="8" height="8" fill="#1a1a1a"/>
+  <rect x="32" y="56" width="8" height="8" fill="#1a1a1a"/>
+  <rect x="16" y="48" width="8" height="8" fill="#1a1a1a"/>
+  <rect x="72" y="40" width="8" height="8" fill="#1a1a1a"/>
+  <rect x="16" y="24" width="8" height="8" fill="#ffffff"/>
+  <rect x="16" y="32" width="8" height="8" fill="#ffffff"/>
+  <rect x="24" y="24" width="8" height="8" fill="#ffffff"/>
+  <rect x="24" y="32" width="8" height="8" fill="#ffffff"/>
+  <rect x="24" y="32" width="8" height="8" fill="#111111"/>
+  <rect x="56" y="24" width="8" height="8" fill="#ffffff"/>
+  <rect x="56" y="32" width="8" height="8" fill="#ffffff"/>
+  <rect x="64" y="24" width="8" height="8" fill="#ffffff"/>
+  <rect x="64" y="32" width="8" height="8" fill="#ffffff"/>
+  <rect x="64" y="32" width="8" height="8" fill="#111111"/>
+  <rect x="24" y="56" width="8" height="8" fill="#333333"/>
+  <rect x="32" y="56" width="8" height="8" fill="#333333"/>
+  <rect x="40" y="56" width="8" height="8" fill="#333333"/>
+  <rect x="48" y="56" width="8" height="8" fill="#333333"/>
+  <rect x="56" y="56" width="8" height="8" fill="#333333"/>
+  <rect x="64" y="56" width="8" height="8" fill="#333333"/>
+  <rect x="16" y="64" width="8" height="8" fill="#333333"/>
+  <rect x="72" y="64" width="8" height="8" fill="#333333"/>
+  <rect x="8" y="80" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="0" y="88" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="0" y="96" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="24" y="80" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="24" y="88" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="16" y="96" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="56" y="80" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="56" y="88" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="64" y="96" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="72" y="80" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="80" y="88" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="80" y="96" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+</svg>
+        </div>
+        <span class="nav-logo-name">OCTOCOOKIE</span>
+      </a>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#security">Segurança</a>
+        <a href="#contact">Contato</a>
+        <a href="CRYPTEX.html" class="nav-cta">ABRIR CARTEIRA</a>
+      </div>
+    </nav>
+
+    <!-- HERO -->
+    <section class="hero" style="max-width:100%;padding-top:120px">
+      <div class="hero-mascot"><svg class="mascot-svg" viewBox="0 0 96 104" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect x="16" y="0" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="0" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="0" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="0" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="0" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="0" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="0" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="0" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="80" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="0" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="80" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="88" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="0" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="80" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="88" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="0" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="80" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="88" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="0" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="80" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="88" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="0" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="80" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="88" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="0" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="80" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="88" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="80" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="72" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="72" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="72" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="72" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="72" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="72" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="72" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="72" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="16" width="8" height="8" fill="#1a1a1a"/>
+  <rect x="64" y="8" width="8" height="8" fill="#1a1a1a"/>
+  <rect x="32" y="56" width="8" height="8" fill="#1a1a1a"/>
+  <rect x="16" y="48" width="8" height="8" fill="#1a1a1a"/>
+  <rect x="72" y="40" width="8" height="8" fill="#1a1a1a"/>
+  <rect x="16" y="24" width="8" height="8" fill="#ffffff"/>
+  <rect x="16" y="32" width="8" height="8" fill="#ffffff"/>
+  <rect x="24" y="24" width="8" height="8" fill="#ffffff"/>
+  <rect x="24" y="32" width="8" height="8" fill="#ffffff"/>
+  <rect x="24" y="32" width="8" height="8" fill="#111111"/>
+  <rect x="56" y="24" width="8" height="8" fill="#ffffff"/>
+  <rect x="56" y="32" width="8" height="8" fill="#ffffff"/>
+  <rect x="64" y="24" width="8" height="8" fill="#ffffff"/>
+  <rect x="64" y="32" width="8" height="8" fill="#ffffff"/>
+  <rect x="64" y="32" width="8" height="8" fill="#111111"/>
+  <rect x="24" y="56" width="8" height="8" fill="#333333"/>
+  <rect x="32" y="56" width="8" height="8" fill="#333333"/>
+  <rect x="40" y="56" width="8" height="8" fill="#333333"/>
+  <rect x="48" y="56" width="8" height="8" fill="#333333"/>
+  <rect x="56" y="56" width="8" height="8" fill="#333333"/>
+  <rect x="64" y="56" width="8" height="8" fill="#333333"/>
+  <rect x="16" y="64" width="8" height="8" fill="#333333"/>
+  <rect x="72" y="64" width="8" height="8" fill="#333333"/>
+  <rect x="8" y="80" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="0" y="88" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="0" y="96" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="24" y="80" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="24" y="88" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="16" y="96" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="56" y="80" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="56" y="88" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="64" y="96" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="72" y="80" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="80" y="88" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="80" y="96" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+</svg></div>
+      <p class="hero-kicker">Carteira Digital Descentralizada</p>
+      <h1 class="hero-title">Sua cripto.<br><span>Seu controle.</span></h1>
+      <p class="hero-sub">A OctoCookie é uma carteira Web3 de código aberto que protege seus ativos com criptografia local — suas chaves ficam somente no seu dispositivo.</p>
+      <div class="hero-actions">
+        <a href="CRYPTEX.html" class="btn-hero-primary">🍪 ABRIR CARTEIRA</a>
+        <a href="#features" class="btn-hero-ghost">VER FEATURES →</a>
+      </div>
+      <div class="hero-scroll">
+        <div class="scroll-line"></div>
+        <span>SCROLL</span>
+      </div>
+    </section>
+
+    <!-- STRIP -->
+    <div class="feature-strip">
+      <div class="fs-item"><span class="fs-icon">🔐</span><span class="fs-label">Seed Local</span></div>
+      <div class="fs-item"><span class="fs-icon">⛓</span><span class="fs-label">Multi-Chain</span></div>
+      <div class="fs-item"><span class="fs-icon">🔄</span><span class="fs-label">DEX Swap</span></div>
+      <div class="fs-item"><span class="fs-icon">📊</span><span class="fs-label">Portfolio</span></div>
+      <div class="fs-item"><span class="fs-icon">🤖</span><span class="fs-label">Trader Bot</span></div>
+      <div class="fs-item"><span class="fs-icon">💬</span><span class="fs-label">Social Feed</span></div>
+    </div>
+
+    <!-- FEATURES -->
+    <section id="features">
+      <div class="reveal">
+        <span class="section-tag">Features</span>
+        <h2 class="section-title">Tudo que você<br>precisa, reunido.</h2>
+        <p class="section-sub">Da carteira ao trader bot, a OctoCookie concentra o ecossistema cripto num único app leve e elegante.</p>
+      </div>
+      <div class="features-grid">
+        <div class="feature-card reveal">
+          <span class="fc-icon">💼</span>
+          <div class="fc-title">Carteira HD</div>
+          <div class="fc-desc">Crie ou importe carteiras HD com seed phrase de 12 ou 24 palavras. Compatível com Ethereum, BNB Chain, Polygon e Arbitrum.</div>
+        </div>
+        <div class="feature-card reveal">
+          <span class="fc-icon">🔄</span>
+          <div class="fc-title">Swap DEX</div>
+          <div class="fc-desc">Troque tokens diretamente via Uniswap, PancakeSwap e QuickSwap. Modo demo para testar estratégias sem risco.</div>
+        </div>
+        <div class="feature-card reveal">
+          <span class="fc-icon">📈</span>
+          <div class="fc-title">Trader Bot</div>
+          <div class="fc-desc">Bot automatizado com análise RSI/SMA integrada, stop-loss, take-profit e controle de risco configurável por sliders.</div>
+        </div>
+        <div class="feature-card reveal">
+          <span class="fc-icon">🏦</span>
+          <div class="fc-title">Portfólio Demo</div>
+          <div class="fc-desc">Simule investimentos com $10.000 virtuais. Compre, venda e acompanhe seu portfólio com gráficos em tempo real.</div>
+        </div>
+        <div class="feature-card reveal">
+          <span class="fc-icon">🫂</span>
+          <div class="fc-title">Feed Social</div>
+          <div class="fc-desc">Publique, comente e interaja com a comunidade cripto. Feed em tempo real via Firebase com notificações push.</div>
+        </div>
+        <div class="feature-card reveal">
+          <span class="fc-icon">🔔</span>
+          <div class="fc-title">Alertas de Preço</div>
+          <div class="fc-desc">Configure alertas para qualquer ativo e receba notificações do navegador quando o preço atingir sua meta.</div>
+        </div>
+        <div class="feature-card reveal">
+          <span class="fc-icon">⚡</span>
+          <div class="fc-title">Gas em Tempo Real</div>
+          <div class="fc-desc">Monitore taxas de gas em tempo real. Escolha entre transação lenta, normal ou rápida antes de confirmar.</div>
+        </div>
+        <div class="feature-card reveal">
+          <span class="fc-icon">🇧🇷</span>
+          <div class="fc-title">PIX Integrado</div>
+          <div class="fc-desc">Gere QR Code PIX para receber pagamentos em reais. Compatível com qualquer banco com código copia e cola.</div>
+        </div>
+        <div class="feature-card reveal">
+          <span class="fc-icon">🌐</span>
+          <div class="fc-title">Notícias Cripto</div>
+          <div class="fc-desc">Feed de notícias com as últimas tendências do mercado, puxado em tempo real de fontes confiáveis.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- MOCKUP -->
+    <section style="padding-top:0">
+      <div class="mockup-section reveal">
+        <div>
+          <span class="section-tag">Interface</span>
+          <h2 class="section-title">Design limpo.<br>Controle total.</h2>
+          <p class="section-sub" style="margin-bottom:28px">Interface glassmorphism em tons de preto e branco — elegante, sem distrações, 100% responsiva para mobile e desktop.</p>
+          <a href="CRYPTEX.html" class="btn-hero-primary" style="display:inline-flex;margin-top:4px;">EXPERIMENTAR AGORA →</a>
+        </div>
+        <div class="phone-glow">
+          <div class="mockup-phone">
+            <div class="mock-balance">2.4819 ETH</div>
+            <div class="mock-addr">0x4B2f...3D9A</div>
+            <div class="mock-actions">
+              <div class="mock-action">📤 Enviar</div>
+              <div class="mock-action">📥 Receber</div>
+              <div class="mock-action">🔄 Swap</div>
+              <div class="mock-action">🔄 Atualizar</div>
+            </div>
+            <div class="mock-coins">
+              <div class="mock-coin">
+                <span class="mock-coin-sym">BTC</span>
+                <span class="mock-coin-price">$67,420</span>
+                <span class="mock-coin-chg mc-green">+2.4%</span>
+              </div>
+              <div class="mock-coin">
+                <span class="mock-coin-sym">ETH</span>
+                <span class="mock-coin-price">$3,812</span>
+                <span class="mock-coin-chg mc-green">+1.8%</span>
+              </div>
+              <div class="mock-coin">
+                <span class="mock-coin-sym">SOL</span>
+                <span class="mock-coin-price">$182</span>
+                <span class="mock-coin-chg mc-red">-0.9%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECURITY -->
+    <section id="security" style="border-top:1px solid var(--border)">
+      <div class="reveal">
+        <span class="section-tag">Segurança</span>
+        <h2 class="section-title">Chaves locais.<br>Nunca na nuvem.</h2>
+        <p class="section-sub">A arquitetura de segurança da OctoCookie foi projetada para manter você como único dono dos seus ativos.</p>
+      </div>
+      <div class="security-grid reveal">
+        <div class="sec-card">
+          <div class="sec-badge">✓ LOCAL</div>
+          <div class="sec-title">IndexedDB Criptografado</div>
+          <div class="sec-desc">Sua seed phrase é encriptada com AES-256 + PBKDF2 e armazenada apenas no seu dispositivo.</div>
+        </div>
+        <div class="sec-card">
+          <div class="sec-badge">✓ ZERO-SERVIDOR</div>
+          <div class="sec-title">Sem Custódia</div>
+          <div class="sec-desc">Seus ativos ficam na blockchain. Nenhum servidor OctoCookie tem acesso às suas chaves privadas.</div>
+        </div>
+        <div class="sec-card">
+          <div class="sec-badge">✓ PADRÃO BIP39</div>
+          <div class="sec-title">Seed Compatível</div>
+          <div class="sec-desc">Seed phrases padrão BIP39/44 — importável em qualquer outra carteira compatível como MetaMask.</div>
+        </div>
+        <div class="sec-card">
+          <div class="sec-badge">✓ OPEN SOURCE</div>
+          <div class="sec-title">Código Transparente</div>
+          <div class="sec-desc">Todo o código é auditável. Sem trackers ocultos, sem coleta de dados, sem anúncios.</div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-bar reveal">
+        <div class="stat-item">
+          <span class="stat-num">4+</span>
+          <span class="stat-label">Redes</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-num">0</span>
+          <span class="stat-label">Dados coletados</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-num">AES</span>
+          <span class="stat-label">Criptografia</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-num">100%</span>
+          <span class="stat-label">Open Source</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <div class="cta-section" id="contact">
+      <div class="cta-mascot"><svg class="mascot-svg" viewBox="0 0 96 104" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect x="16" y="0" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="0" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="0" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="0" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="0" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="0" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="0" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="0" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="80" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="0" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="80" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="88" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="0" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="80" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="88" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="0" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="80" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="88" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="0" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="80" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="88" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="0" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="80" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="88" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="0" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="80" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="88" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="80" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="72" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="72" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="72" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="72" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="72" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="72" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="72" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="72" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="16" width="8" height="8" fill="#1a1a1a"/>
+  <rect x="64" y="8" width="8" height="8" fill="#1a1a1a"/>
+  <rect x="32" y="56" width="8" height="8" fill="#1a1a1a"/>
+  <rect x="16" y="48" width="8" height="8" fill="#1a1a1a"/>
+  <rect x="72" y="40" width="8" height="8" fill="#1a1a1a"/>
+  <rect x="16" y="24" width="8" height="8" fill="#ffffff"/>
+  <rect x="16" y="32" width="8" height="8" fill="#ffffff"/>
+  <rect x="24" y="24" width="8" height="8" fill="#ffffff"/>
+  <rect x="24" y="32" width="8" height="8" fill="#ffffff"/>
+  <rect x="24" y="32" width="8" height="8" fill="#111111"/>
+  <rect x="56" y="24" width="8" height="8" fill="#ffffff"/>
+  <rect x="56" y="32" width="8" height="8" fill="#ffffff"/>
+  <rect x="64" y="24" width="8" height="8" fill="#ffffff"/>
+  <rect x="64" y="32" width="8" height="8" fill="#ffffff"/>
+  <rect x="64" y="32" width="8" height="8" fill="#111111"/>
+  <rect x="24" y="56" width="8" height="8" fill="#333333"/>
+  <rect x="32" y="56" width="8" height="8" fill="#333333"/>
+  <rect x="40" y="56" width="8" height="8" fill="#333333"/>
+  <rect x="48" y="56" width="8" height="8" fill="#333333"/>
+  <rect x="56" y="56" width="8" height="8" fill="#333333"/>
+  <rect x="64" y="56" width="8" height="8" fill="#333333"/>
+  <rect x="16" y="64" width="8" height="8" fill="#333333"/>
+  <rect x="72" y="64" width="8" height="8" fill="#333333"/>
+  <rect x="8" y="80" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="0" y="88" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="0" y="96" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="24" y="80" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="24" y="88" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="16" y="96" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="56" y="80" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="56" y="88" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="64" y="96" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="72" y="80" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="80" y="88" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="80" y="96" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+</svg></div>
+      <h2 class="cta-title">Pronto para começar?</h2>
+      <p class="cta-sub">Crie sua carteira agora em segundos, sem cadastro, sem taxas ocultas. Ou entre em contato para saber mais.</p>
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+        <a href="CRYPTEX.html" class="btn-hero-primary">🍪 ABRIR OCTOCOOKIE</a>
+        <a href="index.html" class="btn-hero-ghost">🤖 TRADER BOT</a>
+      </div>
+      <div class="cta-contact">
+        <span class="cta-contact-label">Perguntas? Fale conosco</span>
+        <div class="contact-badge">
+          <span class="contact-badge-icon">📱</span>
+          <div class="contact-badge-text">
+            WhatsApp / Telefone
+            <strong><a href="tel:+5521994932391" class="cta-phone">+55 (21) 99493-2391</a></strong>
+          </div>
+        </div>
+        <span class="cta-phone-sub">Disponível para dúvidas sobre integração e uso</span>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer>
+      <div class="footer-logo">
+        <div class="footer-logo-icon">
+          <svg viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect x="16" y="0" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="0" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="0" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="0" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="0" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="0" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="0" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="0" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="80" y="8" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="0" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="80" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="88" y="16" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="0" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="80" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="88" y="24" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="0" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="80" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="88" y="32" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="0" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="80" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="88" y="40" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="0" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="80" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="88" y="48" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="0" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="80" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="88" y="56" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="80" y="64" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="16" y="72" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="24" y="72" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="32" y="72" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="40" y="72" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="48" y="72" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="56" y="72" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="64" y="72" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="72" y="72" width="8" height="8" fill="#dcdcdc"/>
+  <rect x="8" y="16" width="8" height="8" fill="#1a1a1a"/>
+  <rect x="64" y="8" width="8" height="8" fill="#1a1a1a"/>
+  <rect x="32" y="56" width="8" height="8" fill="#1a1a1a"/>
+  <rect x="16" y="48" width="8" height="8" fill="#1a1a1a"/>
+  <rect x="72" y="40" width="8" height="8" fill="#1a1a1a"/>
+  <rect x="16" y="24" width="8" height="8" fill="#ffffff"/>
+  <rect x="16" y="32" width="8" height="8" fill="#ffffff"/>
+  <rect x="24" y="24" width="8" height="8" fill="#ffffff"/>
+  <rect x="24" y="32" width="8" height="8" fill="#ffffff"/>
+  <rect x="24" y="32" width="8" height="8" fill="#111111"/>
+  <rect x="56" y="24" width="8" height="8" fill="#ffffff"/>
+  <rect x="56" y="32" width="8" height="8" fill="#ffffff"/>
+  <rect x="64" y="24" width="8" height="8" fill="#ffffff"/>
+  <rect x="64" y="32" width="8" height="8" fill="#ffffff"/>
+  <rect x="64" y="32" width="8" height="8" fill="#111111"/>
+  <rect x="24" y="56" width="8" height="8" fill="#333333"/>
+  <rect x="32" y="56" width="8" height="8" fill="#333333"/>
+  <rect x="40" y="56" width="8" height="8" fill="#333333"/>
+  <rect x="48" y="56" width="8" height="8" fill="#333333"/>
+  <rect x="56" y="56" width="8" height="8" fill="#333333"/>
+  <rect x="64" y="56" width="8" height="8" fill="#333333"/>
+  <rect x="16" y="64" width="8" height="8" fill="#333333"/>
+  <rect x="72" y="64" width="8" height="8" fill="#333333"/>
+  <rect x="8" y="80" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="0" y="88" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="0" y="96" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="24" y="80" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="24" y="88" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="16" y="96" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="56" y="80" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="56" y="88" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="64" y="96" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="72" y="80" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="80" y="88" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+  <rect x="80" y="96" width="8" height="8" fill="rgba(255,255,255,0.5)"/>
+</svg>
+        </div>
+        <span class="footer-logo-name">OCTOCOOKIE</span>
+      </div>
+      <div class="footer-note">© 2025 OctoCookie. Código aberto e descentralizado.</div>
+      <div class="footer-links">
+        <a href="CRYPTEX.html">Carteira</a>
+        <a href="index.html">Trader</a>
+        <a href="tel:+5521994932391">Contato</a>
+      </div>
+    </footer>
+
+  </div><!-- end page-wrap -->
+
+  <script>
+    // Cursor glow
+    (function(){
+      var g = document.getElementById('cursorGlow');
+      if(!g) return;
+      document.addEventListener('mousemove', function(e){
+        g.style.left = e.clientX + 'px';
+        g.style.top = e.clientY + 'px';
+      });
+    })();
+
+    // Scroll reveal
+    (function(){
+      var els = document.querySelectorAll('.reveal');
+      var io = new IntersectionObserver(function(entries){
+        entries.forEach(function(e){
+          if(e.isIntersecting){
+            e.target.classList.add('visible');
+            io.unobserve(e.target);
+          }
+        });
+      }, { threshold: 0.12 });
+      els.forEach(function(el){ io.observe(el); });
+    })();
+  </script>
+</body>
+</html>
