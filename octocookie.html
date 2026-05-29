@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>OCTOCOOKIE — Carteira Digital</title>
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -823,12 +824,41 @@
       border-radius: 50%;
     }
 
+    @media (max-width: 900px) {
+      .mockup-section { gap: 32px; }
+      .features-grid { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+    }
+
     @media (max-width: 640px) {
-      section { padding: 64px 18px; }
+      section { padding: 48px 16px; }
+      .hero { padding: 100px 16px 60px; min-height: auto; }
+      .hero-title { font-size: clamp(28px, 7vw, 48px); }
+      .hero-sub { font-size: 13px; }
+      .hero-actions { flex-direction: column; align-items: center; }
+      .btn-hero-primary, .btn-hero-ghost { width: 100%; max-width: 280px; text-align: center; justify-content: center; }
+      .features-grid { grid-template-columns: 1fr; gap: 10px; }
+      .feature-card { padding: 20px 16px; }
       .stats-bar { grid-template-columns: 1fr 1fr; }
-      .stat-item { border-bottom: 1px solid var(--border); }
+      .stat-item { border-bottom: 1px solid var(--border); padding: 22px 16px; }
       .stat-item:last-child, .stat-item:nth-last-child(2):nth-child(odd) { border-bottom: none; }
-      footer { flex-direction: column; align-items: flex-start; padding: 24px 18px; }
+      .stat-num { font-size: 28px; }
+      .mockup-section { grid-template-columns: 1fr; text-align: center; }
+      .section-sub { margin: 0 auto; }
+      .security-grid { grid-template-columns: 1fr; }
+      .cta-title { font-size: clamp(22px, 5vw, 36px); }
+      .cta-sub { font-size: 13px; }
+      footer { flex-direction: column; align-items: flex-start; padding: 24px 16px; gap: 12px; }
+      .footer-links { flex-wrap: wrap; }
+      .contact-badge { flex-direction: column; text-align: center; }
+      nav { padding: 10px 14px; }
+    }
+
+    @media (max-width: 380px) {
+      .hero { padding: 90px 12px 48px; }
+      section { padding: 36px 12px; }
+      .feature-strip { flex-wrap: nowrap; }
+      .fs-item { min-width: 120px; padding: 16px 12px; }
+      .mock-actions { grid-template-columns: repeat(2, 1fr); }
     }
   </style>
 </head>
@@ -1161,12 +1191,12 @@
 
     <!-- STRIP -->
     <div class="feature-strip">
-      <div class="fs-item"><span class="fs-icon">🔐</span><span class="fs-label">Seed Local</span></div>
-      <div class="fs-item"><span class="fs-icon">⛓</span><span class="fs-label">Multi-Chain</span></div>
-      <div class="fs-item"><span class="fs-icon">🔄</span><span class="fs-label">DEX Swap</span></div>
-      <div class="fs-item"><span class="fs-icon">📊</span><span class="fs-label">Portfolio</span></div>
-      <div class="fs-item"><span class="fs-icon">🤖</span><span class="fs-label">Trader Bot</span></div>
-      <div class="fs-item"><span class="fs-icon">💬</span><span class="fs-label">Social Feed</span></div>
+      <div class="fs-item"><span class="fs-icon"><i class="fas fa-lock"></i></span><span class="fs-label">Seed Local</span></div>
+      <div class="fs-item"><span class="fs-icon"><i class="fas fa-link"></i></span><span class="fs-label">Multi-Chain</span></div>
+      <div class="fs-item"><span class="fs-icon"><i class="fas fa-exchange-alt"></i></span><span class="fs-label">DEX Swap</span></div>
+      <div class="fs-item"><span class="fs-icon"><i class="fas fa-chart-pie"></i></span><span class="fs-label">Portfolio</span></div>
+      <div class="fs-item"><span class="fs-icon"><i class="fas fa-terminal"></i></span><span class="fs-label">Trader Bot</span></div>
+      <div class="fs-item"><span class="fs-icon"><i class="fas fa-comments"></i></span><span class="fs-label">Social Feed</span></div>
     </div>
 
     <!-- FEATURES -->
@@ -1178,47 +1208,47 @@
       </div>
       <div class="features-grid">
         <div class="feature-card reveal">
-          <span class="fc-icon">💼</span>
+          <span class="fc-icon"><i class="fas fa-wallet"></i></span>
           <div class="fc-title">Carteira HD</div>
           <div class="fc-desc">Crie ou importe carteiras HD com seed phrase de 12 ou 24 palavras. Compatível com Ethereum, BNB Chain, Polygon e Arbitrum.</div>
         </div>
         <div class="feature-card reveal">
-          <span class="fc-icon">🔄</span>
+          <span class="fc-icon"><i class="fas fa-exchange-alt"></i></span>
           <div class="fc-title">Swap DEX</div>
           <div class="fc-desc">Troque tokens diretamente via Uniswap, PancakeSwap e QuickSwap. Modo demo para testar estratégias sem risco.</div>
         </div>
         <div class="feature-card reveal">
-          <span class="fc-icon">📈</span>
+          <span class="fc-icon"><i class="fas fa-chart-line"></i></span>
           <div class="fc-title">Trader Bot</div>
           <div class="fc-desc">Bot automatizado com análise RSI/SMA integrada, stop-loss, take-profit e controle de risco configurável por sliders.</div>
         </div>
         <div class="feature-card reveal">
-          <span class="fc-icon">🏦</span>
+          <span class="fc-icon"><i class="fas fa-university"></i></span>
           <div class="fc-title">Portfólio Demo</div>
           <div class="fc-desc">Simule investimentos com $10.000 virtuais. Compre, venda e acompanhe seu portfólio com gráficos em tempo real.</div>
         </div>
         <div class="feature-card reveal">
-          <span class="fc-icon">🫂</span>
+          <span class="fc-icon"><i class="fas fa-users"></i></span>
           <div class="fc-title">Feed Social</div>
           <div class="fc-desc">Publique, comente e interaja com a comunidade cripto. Feed em tempo real via Firebase com notificações push.</div>
         </div>
         <div class="feature-card reveal">
-          <span class="fc-icon">🔔</span>
+          <span class="fc-icon"><i class="fas fa-bell"></i></span>
           <div class="fc-title">Alertas de Preço</div>
           <div class="fc-desc">Configure alertas para qualquer ativo e receba notificações do navegador quando o preço atingir sua meta.</div>
         </div>
         <div class="feature-card reveal">
-          <span class="fc-icon">⚡</span>
+          <span class="fc-icon"><i class="fas fa-bolt"></i></span>
           <div class="fc-title">Gas em Tempo Real</div>
           <div class="fc-desc">Monitore taxas de gas em tempo real. Escolha entre transação lenta, normal ou rápida antes de confirmar.</div>
         </div>
         <div class="feature-card reveal">
-          <span class="fc-icon">🇧🇷</span>
+          <span class="fc-icon"><i class="fas fa-qrcode"></i></span>
           <div class="fc-title">PIX Integrado</div>
           <div class="fc-desc">Gere QR Code PIX para receber pagamentos em reais. Compatível com qualquer banco com código copia e cola.</div>
         </div>
         <div class="feature-card reveal">
-          <span class="fc-icon">🌐</span>
+          <span class="fc-icon"><i class="fas fa-globe"></i></span>
           <div class="fc-title">Notícias Cripto</div>
           <div class="fc-desc">Feed de notícias com as últimas tendências do mercado, puxado em tempo real de fontes confiáveis.</div>
         </div>
@@ -1239,10 +1269,10 @@
             <div class="mock-balance">2.4819 ETH</div>
             <div class="mock-addr">0x4B2f...3D9A</div>
             <div class="mock-actions">
-              <div class="mock-action">📤 Enviar</div>
-              <div class="mock-action">📥 Receber</div>
-              <div class="mock-action">🔄 Swap</div>
-              <div class="mock-action">🔄 Atualizar</div>
+              <div class="mock-action"><i class="fas fa-arrow-up" style="font-size:11px"></i> Enviar</div>
+              <div class="mock-action"><i class="fas fa-arrow-down" style="font-size:11px"></i> Receber</div>
+              <div class="mock-action"><i class="fas fa-exchange-alt" style="font-size:11px"></i> Swap</div>
+              <div class="mock-action"><i class="fas fa-sync-alt" style="font-size:11px"></i> Atualizar</div>
             </div>
             <div class="mock-coins">
               <div class="mock-coin">
@@ -1468,12 +1498,12 @@
       <p class="cta-sub">Crie sua carteira agora em segundos, sem cadastro, sem taxas ocultas. Ou entre em contato para saber mais.</p>
       <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
         <a href="CRYPTEX.html" class="btn-hero-primary">ABRIR OCTOCOOKIE</a>
-        <a href="index.html" class="btn-hero-ghost">🤖 TRADER BOT</a>
+        <a href="index.html" class="btn-hero-ghost"><i class="fas fa-terminal"></i> TRADER BOT</a>
       </div>
       <div class="cta-contact">
         <span class="cta-contact-label">Perguntas? Fale conosco</span>
         <div class="contact-badge">
-          <span class="contact-badge-icon">📱</span>
+          <span class="contact-badge-icon"><i class="fas fa-phone-alt"></i></span>
           <div class="contact-badge-text">
             WhatsApp / Telefone
             <strong><a href="tel:+5521994932391" class="cta-phone">+55 (21) 99493-2391</a></strong>

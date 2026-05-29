@@ -1247,6 +1247,26 @@ select.field-input { cursor: pointer; }
 body { overflow-y: auto; height: auto; }
 .app-wrapper { height: auto; min-height: 100vh; padding: 16px; flex-direction: column; align-items: center; }
 
+@media (max-width: 600px) {
+  .app-wrapper { padding: 10px; }
+  .oc-top-bar { padding: 8px 0; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+  .app-title { font-size: 16px; }
+  .grid-2col { grid-template-columns: 1fr; gap: 8px; }
+  .flex-between { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .card { padding: 14px; }
+  .card-header { font-size: 11px; }
+  .close-order-btn { bottom: 14px; right: 14px; padding: 10px 14px; font-size: 11px; }
+  table { font-size: 11px; }
+  th, td { padding: 6px 4px; }
+  .log-box { max-height: 140px; font-size: 10px; }
+}
+
+@media (max-width: 380px) {
+  .app-wrapper { padding: 6px; }
+  .card { padding: 10px; margin-bottom: 10px; }
+  button { padding: 8px 12px; font-size: 11px; }
+}
+
 .oc-top-bar {
   width: 100%;
   max-width: 900px;
@@ -1692,7 +1712,7 @@ tr:hover td { background: var(--bg3); }
   <div class="oc-content">
     <div class="flex-between" style="margin-bottom: 20px;">
         <div>
-            <div class="app-title">⚡ TRADER BOT</div>
+            <div class="app-title"><i class="fas fa-bolt"></i> TRADER BOT</div>
             <div style="font-size: 10px; color: var(--text3);">Multi-ativo | WebSocket | Modo Demo &amp; Real</div>
         </div>
     </div>
@@ -1726,21 +1746,21 @@ tr:hover td { background: var(--bg3); }
         <div class="flex-between" style="margin-top: 6px;">
             <span>Operação manual:</span>
             <div style="display: flex; gap: 8px;">
-                <button class="success" onclick="manualTrade('CALL')">📈 CALL MANUAL</button>
-                <button class="danger" onclick="manualTrade('PUT')">📉 PUT MANUAL</button>
+                <button class="success" onclick="manualTrade('CALL')"><i class="fas fa-arrow-up"></i> CALL MANUAL</button>
+                <button class="danger" onclick="manualTrade('PUT')"><i class="fas fa-arrow-down"></i> PUT MANUAL</button>
             </div>
         </div>
     </div>
 
     <div class="grid-2col">
         <div class="card">
-            <div class="card-header">🛡️ SEGURANÇA</div>
+            <div class="card-header"><i class="fas fa-shield-alt"></i> SEGURANCA</div>
             <input type="range" id="securityLevel" min="10" max="100" value="70">
             <div class="flex-between"><span>Nível:</span><span id="securityValue">70%</span></div>
             <div class="flex-between"><span>RSI Range:</span><span id="rsiRangeDisplay">30/70</span></div>
         </div>
         <div class="card">
-            <div class="card-header">⚡ AGRESSIVIDADE</div>
+            <div class="card-header"><i class="fas fa-bolt"></i> AGRESSIVIDADE</div>
             <input type="range" id="riskLevel" min="10" max="100" value="40">
             <div class="flex-between"><span>Nível:</span><span id="riskValue">40%</span></div>
             <div class="flex-between"><span>Max Trades:</span><span id="maxTradesDisplay">40</span></div>
@@ -1775,15 +1795,15 @@ tr:hover td { background: var(--bg3); }
             </div>
         </div>
         <div class="flex-between" style="margin-top: 12px; background: var(--bg3); padding: 8px; border-radius: 12px;">
-            <span>🎯 Meta diária: <strong id="dailyTarget">+0.00</strong> USD</span>
-            <span>🛑 Stop diário: <strong id="dailyStop">0.00</strong> USD</span>
-            <span>💰 Saldo: <strong id="balanceDisplay">0.00</strong> USD</span>
+            <span><i class="fas fa-crosshairs"></i> Meta diaria: <strong id="dailyTarget">+0.00</strong> USD</span>
+            <span><i class="fas fa-hand-paper"></i> Stop diario: <strong id="dailyStop">0.00</strong> USD</span>
+            <span><i class="fas fa-coins"></i> Saldo: <strong id="balanceDisplay">0.00</strong> USD</span>
         </div>
     </div>
 
     <div class="grid-2col">
         <div class="card">
-            <div class="card-header">📊 Último Trade</div>
+            <div class="card-header"><i class="fas fa-chart-bar"></i> Ultimo Trade</div>
             <div id="tradeProfit" class="positive" style="font-size: 28px; font-weight:800;">0.00 USD</div>
             <div id="tradeProfitPct" style="font-size:12px;">0%</div>
             <div style="margin-top: 8px;">
@@ -1793,7 +1813,7 @@ tr:hover td { background: var(--bg3); }
             </div>
         </div>
         <div class="card">
-            <div class="card-header">🤖 IA / Decisão</div>
+            <div class="card-header"><i class="fas fa-brain"></i> IA / Decisao</div>
             <div id="aiDecision">— Aguardando análise —</div>
             <div id="aiReason" style="font-size: 11px; color: var(--text2); margin-top: 6px;"></div>
             <hr>
@@ -1803,8 +1823,8 @@ tr:hover td { background: var(--bg3); }
     </div>
 
     <div class="grid-2col">
-        <div class="card"><div class="card-header">📈 Preço (Tempo Real)</div><canvas id="priceChart" width="400" height="160"></canvas></div>
-        <div class="card"><div class="card-header">💰 Lucro Acumulado</div><canvas id="profitChart" width="400" height="160"></canvas></div>
+        <div class="card"><div class="card-header"><i class="fas fa-chart-line"></i> Preco (Tempo Real)</div><canvas id="priceChart" width="400" height="160"></canvas></div>
+        <div class="card"><div class="card-header"><i class="fas fa-coins"></i> Lucro Acumulado</div><canvas id="profitChart" width="400" height="160"></canvas></div>
     </div>
 
     <div class="card">
@@ -1819,7 +1839,7 @@ tr:hover td { background: var(--bg3); }
 
     <div class="card">
         <div class="card-header"><i class="fas fa-terminal"></i> Console / Logs</div>
-        <div id="logs" class="log-box"><div class="log-entry"><span class="log-info">🟢 Sistema pronto. Configure token e inicie o bot.</span></div></div>
+        <div id="logs" class="log-box"><div class="log-entry"><span class="log-info">Sistema pronto. Configure token e inicie o bot.</span></div></div>
     </div>
 </div>
 
