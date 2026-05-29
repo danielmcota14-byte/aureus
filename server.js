@@ -114,11 +114,17 @@ app.post("/moonpay/webhook", (req, res) => {
 // Servindo o front-end
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const frontFile = path.join(__dirname, "octocookie.html");
 
-app.get("/", (_req, res) => res.sendFile(frontFile));
-app.get("/cryptex.html", (_req, res) => res.sendFile(frontFile));
-app.use(express.static(path.join(__dirname, "public")));
+// Serve todos os arquivos estáticos da raiz do projeto (index.html, CRYPTEX.html, octocookie.html, etc.)
+app.use(express.static(__dirname));
+
+// Rota raiz → index.html (landing page)
+app.get("/", (_req, res) => res.sendFile(path.join(__dirname, "index.html")));
+
+// Rotas explícitas para cada página
+app.get("/cryptex.html", (_req, res) => res.sendFile(path.join(__dirname, "CRYPTEX.html")));
+app.get("/CRYPTEX.html", (_req, res) => res.sendFile(path.join(__dirname, "CRYPTEX.html")));
+app.get("/octocookie.html", (_req, res) => res.sendFile(path.join(__dirname, "octocookie.html")));
 
 app.listen(port, "0.0.0.0", () => {
   console.log(`MoonPay backend rodando em http://0.0.0.0:${port}`);
