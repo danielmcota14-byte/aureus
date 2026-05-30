@@ -9,96 +9,145 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-analytics-compat.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  <style>
+<style>
 @import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap');
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-:root {
-  --bg: #060606; --bg2: rgba(255,255,255,0.04); --bg3: rgba(255,255,255,0.08); --bg4: rgba(255,255,255,0.13);
-  --border: rgba(255,255,255,0.09); --border2: rgba(255,255,255,0.2);
-  --text: #f0f0f0; --text2: rgba(240,240,240,0.6); --text3: rgba(240,240,240,0.3);
-  --radius: 18px; --radius2: 12px; --radius3: 8px;
-  --font-mono: 'Space Mono', monospace; --font-head: 'Syne', sans-serif;
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#060606;--bg2:rgba(255,255,255,0.04);--bg3:rgba(255,255,255,0.08);--bg4:rgba(255,255,255,0.13);
+  --border:rgba(255,255,255,0.09);--border2:rgba(255,255,255,0.2);
+  --text:#f0f0f0;--text2:rgba(240,240,240,0.6);--text3:rgba(240,240,240,0.3);
+  --radius:18px;--radius2:12px;--radius3:8px;
+  --font-mono:'Space Mono',monospace;--font-head:'Syne',sans-serif;
 }
-html { scroll-behavior: smooth; }
-body { background: var(--bg); color: var(--text); font-family: var(--font-mono); font-size: 14px; line-height: 1.5; min-height: 100vh; overflow-x: hidden; }
-body::before { content: ''; position: fixed; inset: 0; background: radial-gradient(ellipse 60% 50% at 20% 30%, rgba(255,255,255,0.03) 0%, transparent 70%), radial-gradient(ellipse 40% 60% at 80% 70%, rgba(255,255,255,0.02) 0%, transparent 70%); pointer-events: none; z-index: 0; }
-.cursor-glow { position: fixed; width: 480px; height: 480px; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.02) 40%, transparent 70%); pointer-events: none; z-index: 1; transform: translate(-50%, -50%); transition: left 0.06s linear, top 0.06s linear; mix-blend-mode: screen; }
-@keyframes slideUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
-.logo { display: flex; align-items: center; gap: 10px; margin-bottom: 0; }
-.logo-icon { width: 44px; height: 44px; image-rendering: pixelated; border-radius: 10px; display: flex; align-items: center; justify-content: center; overflow: visible; flex-shrink: 0; }
-.logo-name { font-family: var(--font-head); font-size: 18px; font-weight: 800; letter-spacing: 0.1em; color: var(--text); text-transform: uppercase; }
-.status-badge { display: flex; align-items: center; gap: 8px; padding: 6px 14px; background: var(--bg3); border: 1px solid var(--border); border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: var(--text2); }
-.api-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text3); display: inline-block; flex-shrink: 0; }
-.api-dot.online { background: #7fff7f; box-shadow: 0 0 8px rgba(100,255,100,0.6); animation: pulse 1.5s infinite; }
-.api-dot.offline { background: #ff9090; }
-.api-dot.paused { background: #ffe77f; }
-body { overflow-y: auto; height: auto; }
-.app-wrapper { position: relative; z-index: 2; width: 100%; min-height: 100vh; padding: 16px; display: flex; flex-direction: column; align-items: center; }
-.oc-top-bar { width: 100%; max-width: 900px; display: flex; align-items: center; justify-content: space-between; padding: 12px 0; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
-.app-title { font-family: var(--font-head); font-size: 22px; font-weight: 800; letter-spacing: 0.06em; color: var(--text); }
-.oc-content { width: 100%; max-width: 900px; }
-.card { background: rgba(255,255,255,0.055); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 14px; box-shadow: 0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.07); transition: border-color 0.25s; }
-.card:hover { border-color: rgba(255,255,255,0.15); }
-.card-header { font-family: var(--font-head); font-size: 13px; font-weight: 700; letter-spacing: 0.08em; color: var(--text2); margin-bottom: 14px; text-transform: uppercase; display: flex; align-items: center; gap: 8px; }
-.grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
-@media (max-width: 600px) { .grid-2col { grid-template-columns: 1fr; } }
-.flex-between { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
-label { display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; color: var(--text3); margin-bottom: 5px; text-transform: uppercase; }
-input[type="text"], input[type="password"], input[type="number"], select, textarea { width: 100%; padding: 10px 13px; background: rgba(255,255,255,0.06); border: 1px solid var(--border); border-radius: var(--radius2); color: var(--text); font-family: var(--font-mono); font-size: 13px; outline: none; transition: border-color 0.2s, background 0.2s; margin-bottom: 8px; appearance: none; }
-input:focus, select:focus { border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.09); }
-input::placeholder { color: var(--text3); }
-input[type="range"] { width: 100%; background: transparent; border: none; padding: 4px 0; accent-color: var(--text); }
-button { padding: 10px 18px; background: rgba(255,255,255,0.1); border: 1px solid var(--border2); border-radius: var(--radius2); color: var(--text); font-family: var(--font-mono); font-size: 12px; font-weight: 700; letter-spacing: 0.06em; cursor: pointer; transition: all 0.2s; }
-button:hover { background: rgba(255,255,255,0.18); transform: translateY(-1px); }
-button:active { transform: translateY(0); }
-button.primary { background: var(--text); color: #050505; border-color: var(--text); }
-button.primary:hover { opacity: 0.88; }
-button.success { background: rgba(100,255,100,0.1); color: #7fff7f; border-color: rgba(100,255,100,0.3); }
-button.success:hover { background: rgba(100,255,100,0.2); }
-button.warning { background: rgba(255,220,0,0.1); color: #ffe77f; border-color: rgba(255,220,0,0.3); }
-button.warning:hover { background: rgba(255,220,0,0.2); }
-button.danger { background: rgba(255,80,80,0.1); color: #ff9090; border-color: rgba(255,80,80,0.3); }
-button.danger:hover { background: rgba(255,80,80,0.2); }
-.risk-alert { display: none; background: rgba(255,80,80,0.08); border: 1px solid rgba(255,80,80,0.2); border-radius: var(--radius2); padding: 12px 16px; font-size: 12px; color: #ff9090; margin-bottom: 14px; }
-.risk-alert.show { display: flex; align-items: center; gap: 8px; }
-.positive { color: #7fff7f; font-weight: 700; }
-.negative { color: #ff9090; font-weight: 700; }
-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-th { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; color: var(--text3); text-transform: uppercase; padding: 8px 6px; border-bottom: 1px solid var(--border); text-align: left; }
-td { padding: 8px 6px; border-bottom: 1px solid rgba(255,255,255,0.04); color: var(--text2); }
-tr:hover td { background: var(--bg3); }
-.log-box { background: rgba(0,0,0,0.4); border: 1px solid var(--border); border-radius: var(--radius2); padding: 12px; max-height: 180px; overflow-y: auto; font-family: var(--font-mono); font-size: 11px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent; }
-.log-entry { padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.04); line-height: 1.4; }
-.log-success { color: #7fff7f; }
-.log-error { color: #ff9090; }
-.log-warn { color: #ffe77f; }
-.log-info { color: var(--text2); }
-.simulation-panel { display: none; background: rgba(255,255,255,0.06); border: 1px solid var(--border2); border-radius: var(--radius2); padding: 16px; text-align: center; margin-top: 12px; }
-.simulation-panel.active { display: block; animation: fadeIn 0.2s ease; }
-.simulation-good { color: #7fff7f; font-weight: 700; }
-.simulation-bad { color: #ff9090; font-weight: 700; }
-.close-order-btn { position: fixed; bottom: 24px; right: 24px; background: rgba(14,14,14,0.95); border: 1px solid var(--border2); border-radius: var(--radius); padding: 14px 20px; backdrop-filter: blur(16px); display: none; font-size: 12px; font-weight: 700; z-index: 50; color: var(--text); cursor: pointer; box-shadow: 0 8px 32px rgba(0,0,0,0.5); transition: all 0.2s; }
-.close-order-btn:hover { background: rgba(30,30,30,0.98); transform: translateY(-2px); }
-.close-order-btn.show { display: block; animation: slideUp 0.3s ease; }
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--font-mono);font-size:14px;line-height:1.5;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 60% 50% at 20% 30%,rgba(255,255,255,0.03) 0%,transparent 70%),radial-gradient(ellipse 40% 60% at 80% 70%,rgba(255,255,255,0.02) 0%,transparent 70%);pointer-events:none;z-index:0}
+.cursor-glow{position:fixed;width:480px;height:480px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,0.07) 0%,rgba(255,255,255,0.02) 40%,transparent 70%);pointer-events:none;z-index:1;transform:translate(-50%,-50%);transition:left 0.06s linear,top 0.06s linear;mix-blend-mode:screen}
+@keyframes slideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{width:44px;height:44px;image-rendering:pixelated;border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:visible;flex-shrink:0}
+.logo-name{font-family:var(--font-head);font-size:18px;font-weight:800;letter-spacing:0.1em;color:var(--text);text-transform:uppercase}
+.status-badge{display:flex;align-items:center;gap:8px;padding:6px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:20px;font-size:11px;font-weight:700;letter-spacing:0.06em;color:var(--text2)}
+.api-dot{width:8px;height:8px;border-radius:50%;background:var(--text3);display:inline-block;flex-shrink:0}
+.api-dot.online,.api-dot.api-online{background:#7fff7f;box-shadow:0 0 8px rgba(100,255,100,0.6);animation:pulse 1.5s infinite}
+.api-dot.offline,.api-dot.api-offline{background:#ff9090}
+.api-dot.paused,.api-dot.api-paused{background:#ffe77f}
+body{overflow-y:auto;height:auto}
+.app-wrapper{position:relative;z-index:2;width:100%;min-height:100vh;padding:16px;display:flex;flex-direction:column;align-items:center}
+.oc-top-bar{width:100%;max-width:960px;display:flex;align-items:center;justify-content:space-between;padding:12px 0;margin-bottom:20px;border-bottom:1px solid var(--border)}
+.app-title{font-family:var(--font-head);font-size:22px;font-weight:800;letter-spacing:0.06em;color:var(--text)}
+.oc-content{width:100%;max-width:960px}
+.card{background:rgba(255,255,255,0.055);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:14px;box-shadow:0 4px 24px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.07);transition:border-color 0.25s}
+.card:hover{border-color:rgba(255,255,255,0.15)}
+.card-header{font-family:var(--font-head);font-size:13px;font-weight:700;letter-spacing:0.08em;color:var(--text2);margin-bottom:14px;text-transform:uppercase;display:flex;align-items:center;gap:8px}
+.grid-2col{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.grid-3col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px}
+.grid-4col{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:14px}
+@media(max-width:700px){.grid-2col,.grid-3col,.grid-4col{grid-template-columns:1fr}}
+.flex-between{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+label{display:block;font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--text3);margin-bottom:5px;text-transform:uppercase}
+input[type="text"],input[type="password"],input[type="number"],select,textarea{width:100%;padding:10px 13px;background:rgba(255,255,255,0.06);border:1px solid var(--border);border-radius:var(--radius2);color:var(--text);font-family:var(--font-mono);font-size:13px;outline:none;transition:border-color 0.2s,background 0.2s;margin-bottom:8px;appearance:none}
+input:focus,select:focus{border-color:rgba(255,255,255,0.3);background:rgba(255,255,255,0.09)}
+input::placeholder{color:var(--text3)}
+input[type="range"]{width:100%;background:transparent;border:none;padding:4px 0;accent-color:var(--text)}
+button{padding:10px 18px;background:rgba(255,255,255,0.1);border:1px solid var(--border2);border-radius:var(--radius2);color:var(--text);font-family:var(--font-mono);font-size:12px;font-weight:700;letter-spacing:0.06em;cursor:pointer;transition:all 0.2s}
+button:hover{background:rgba(255,255,255,0.18);transform:translateY(-1px)}
+button:active{transform:translateY(0)}
+button.primary{background:var(--text);color:#050505;border-color:var(--text)}
+button.primary:hover{opacity:0.88}
+button.success{background:rgba(100,255,100,0.1);color:#7fff7f;border-color:rgba(100,255,100,0.3)}
+button.success:hover{background:rgba(100,255,100,0.2)}
+button.warning{background:rgba(255,220,0,0.1);color:#ffe77f;border-color:rgba(255,220,0,0.3)}
+button.warning:hover{background:rgba(255,220,0,0.2)}
+button.danger{background:rgba(255,80,80,0.1);color:#ff9090;border-color:rgba(255,80,80,0.3)}
+button.danger:hover{background:rgba(255,80,80,0.2)}
+button.info{background:rgba(100,165,250,0.1);color:#60a5fa;border-color:rgba(100,165,250,0.3)}
+button.info:hover{background:rgba(100,165,250,0.2)}
+.positive{color:#7fff7f;font-weight:700}
+.negative{color:#ff9090;font-weight:700}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--text3);text-transform:uppercase;padding:8px 6px;border-bottom:1px solid var(--border);text-align:left}
+td{padding:8px 6px;border-bottom:1px solid rgba(255,255,255,0.04);color:var(--text2)}
+tr:hover td{background:var(--bg3)}
+.log-box{background:rgba(0,0,0,0.4);border:1px solid var(--border);border-radius:var(--radius2);padding:12px;max-height:200px;overflow-y:auto;font-family:var(--font-mono);font-size:11px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.1) transparent}
+.log-entry{padding:3px 0;border-bottom:1px solid rgba(255,255,255,0.04);line-height:1.4}
+.log-time{color:var(--text3);margin-right:6px}
+.log-success{color:#7fff7f}
+.log-error{color:#ff9090}
+.log-warn{color:#ffe77f}
+.log-info{color:var(--text2)}
+.log-simulation{color:#60a5fa}
 
-/* CONNECTION STATUS BAR */
-.conn-status-bar { display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: rgba(255,80,80,0.07); border: 1px solid rgba(255,80,80,0.18); border-radius: var(--radius2); margin-bottom: 14px; font-size: 11px; color: #ff9090; transition: all 0.3s; }
-.conn-status-bar.connected { background: rgba(100,255,100,0.05); border-color: rgba(100,255,100,0.18); color: #7fff7f; }
-.conn-status-bar.connecting { background: rgba(255,220,0,0.05); border-color: rgba(255,220,0,0.18); color: #ffe77f; }
-.conn-spinner { width: 12px; height: 12px; border: 2px solid rgba(255,220,0,0.3); border-top-color: #ffe77f; border-radius: 50%; animation: spin 0.8s linear infinite; display: none; }
-.conn-status-bar.connecting .conn-spinner { display: inline-block; }
+/* STATUS BAR */
+.conn-status-bar{display:flex;align-items:center;gap:10px;padding:8px 14px;background:rgba(255,80,80,0.07);border:1px solid rgba(255,80,80,0.18);border-radius:var(--radius2);margin-bottom:14px;font-size:11px;color:#ff9090;transition:all 0.3s}
+.conn-status-bar.connected{background:rgba(100,255,100,0.05);border-color:rgba(100,255,100,0.18);color:#7fff7f}
+.conn-status-bar.connecting{background:rgba(255,220,0,0.05);border-color:rgba(255,220,0,0.18);color:#ffe77f}
+.conn-spinner{width:12px;height:12px;border:2px solid rgba(255,220,0,0.3);border-top-color:#ffe77f;border-radius:50%;animation:spin 0.8s linear infinite;display:none}
+.conn-status-bar.connecting .conn-spinner{display:inline-block}
 
-@media (max-width: 600px) { .app-wrapper { padding: 10px; } .oc-top-bar { flex-wrap: wrap; gap: 8px; } .card { padding: 14px; } table { font-size: 11px; } th, td { padding: 6px 4px; } .log-box { max-height: 140px; font-size: 10px; } }
-  </style>
+/* RISK ALERT */
+.risk-alert{display:none;background:rgba(255,80,80,0.08);border:1px solid rgba(255,80,80,0.2);border-radius:var(--radius2);padding:12px 16px;font-size:12px;color:#ff9090;margin-bottom:14px;animation:pulse 0.5s infinite}
+.risk-alert.show{display:flex;align-items:center;gap:8px}
+
+/* SIMULATION PANEL */
+.simulation-panel{display:none;background:rgba(255,255,255,0.06);border:1px solid var(--border2);border-radius:var(--radius2);padding:16px;margin-bottom:14px}
+.simulation-panel.simulation-active{display:block;animation:fadeIn 0.2s ease}
+.simulation-timer{font-family:var(--font-head);font-size:20px;font-weight:800;color:#60a5fa;margin-bottom:8px}
+.simulation-result{margin-top:10px;font-size:12px}
+.simulation-good{color:#7fff7f;font-weight:700;display:block}
+.simulation-bad{color:#ff9090;font-weight:700;display:block}
+
+/* STATUS DOT */
+.status{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;letter-spacing:0.08em;padding:4px 10px;border-radius:20px;background:var(--bg3)}
+.status.online{color:#7fff7f}
+.status.offline{color:#ff9090}
+.status.paused{color:#ffe77f}
+
+/* API BADGES */
+.api-status{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.api-badge{display:flex;align-items:center;gap:6px;padding:6px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:20px;font-size:11px;color:var(--text2)}
+
+/* DASHBOARD CARDS */
+.dashboard{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:14px}
+.dash-card{background:rgba(255,255,255,0.055);backdrop-filter:blur(18px);border:1px solid var(--border);border-radius:var(--radius2);padding:14px;transition:border-color 0.25s}
+.dash-card:hover{border-color:rgba(255,255,255,0.15)}
+.dash-card-title{font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--text3);text-transform:uppercase;margin-bottom:6px}
+.dash-card-value{font-family:var(--font-head);font-size:22px;font-weight:800;color:var(--text)}
+
+/* CLOSE ORDER BTN */
+.close-order-btn{position:fixed;bottom:24px;right:24px;background:rgba(14,14,14,0.95);border:1px solid var(--border2);border-radius:var(--radius);padding:14px 20px;backdrop-filter:blur(16px);display:none;font-size:12px;font-weight:700;z-index:50;color:var(--text);cursor:pointer;box-shadow:0 8px 32px rgba(0,0,0,0.5);transition:all 0.2s}
+.close-order-btn:hover{background:rgba(30,30,30,0.98);transform:translateY(-2px)}
+.close-order-btn.show{display:block;animation:slideUp 0.3s ease}
+
+/* POPUP */
+.popup-overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);z-index:1200}
+.popup-overlay[style*="display:flex"]{display:flex}
+.popup-container{background:rgba(12,12,12,0.98);color:var(--text);border-radius:var(--radius);padding:24px;box-shadow:0 8px 48px rgba(0,0,0,0.8);width:100%;max-width:820px;border:1px solid var(--border2)}
+.popup-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.popup-header h2{margin:0;font-family:var(--font-head);font-size:16px;font-weight:800;color:var(--text)}
+.close-btn{background:transparent;border:1px solid var(--border);font-size:20px;line-height:1;cursor:pointer;color:var(--text2);border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;transition:all 0.2s}
+.close-btn:hover{background:var(--bg3);color:var(--text)}
+.popup-content{max-height:65vh;overflow:auto;padding-right:8px;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.1) transparent}
+.popup-content p,.popup-content li{color:var(--text2);font-size:13px;line-height:1.7;margin-bottom:8px}
+.popup-content h2,.popup-content h3{font-family:var(--font-head);color:var(--text);margin-bottom:8px;margin-top:14px}
+.popup-footer{display:flex;justify-content:flex-end;margin-top:16px;padding-top:12px;border-top:1px solid var(--border);gap:10px}
+
+/* MULTIASSET CONFIG */
+#multiCryptoConfig{display:none;margin-top:8px}
+
+@media(max-width:600px){.app-wrapper{padding:10px}.oc-top-bar{flex-wrap:wrap;gap:8px}.card{padding:14px}table{font-size:11px}th,td{padding:6px 4px}.log-box{max-height:140px;font-size:10px}.dashboard{grid-template-columns:1fr 1fr}}
+</style>
 </head>
 <body>
 <div class="cursor-glow" id="cursorGlow"></div>
-<script>(function(){ var g=document.getElementById('cursorGlow'); if(!g) return; document.addEventListener('mousemove', function(e){ g.style.left=e.clientX+'px'; g.style.top=e.clientY+'px'; }); })();</script>
+<script>(function(){var g=document.getElementById('cursorGlow');if(!g)return;document.addEventListener('mousemove',function(e){g.style.left=e.clientX+'px';g.style.top=e.clientY+'px';});})();</script>
 
 <div class="app-wrapper">
+  <!-- TOP BAR -->
   <div class="oc-top-bar">
     <div class="logo">
       <div class="logo-icon">
@@ -117,29 +166,32 @@ tr:hover td { background: var(--bg3); }
       </div>
       <span class="logo-name">OCTOCOOKIE</span>
     </div>
-    <div class="status-badge">
-      <span class="api-dot offline" id="derivStatus"></span>
-      <span id="botStatusText">OFFLINE</span>
+    <div class="flex-between" style="gap:12px">
+      <div id="currentTime" style="font-size:11px;color:var(--text3);font-family:var(--font-mono)">--:--:--</div>
+      <div id="botStatus" class="status offline"><span class="api-dot offline" id="botStatusDot"></span> OFFLINE</div>
     </div>
   </div>
 
   <div class="oc-content">
-    <div class="flex-between" style="margin-bottom: 20px;">
+    <!-- TITLE -->
+    <div class="flex-between" style="margin-bottom:20px">
       <div>
         <div class="app-title"><i class="fas fa-bolt"></i> TRADER BOT</div>
-        <div style="font-size: 10px; color: var(--text3);">Multi-ativo | WebSocket | Modo Demo &amp; Real</div>
+        <div style="font-size:10px;color:var(--text3)">Multi-ativo · WebSocket · Demo &amp; Real · RSI+SMA+MACD+Bollinger</div>
       </div>
     </div>
 
-    <!-- CONNECTION STATUS BAR -->
+    <!-- CONNECTION BAR -->
     <div id="connStatusBar" class="conn-status-bar">
       <span class="conn-spinner" id="connSpinner"></span>
-      <i class="fas fa-circle" id="connIcon" style="font-size:8px"></i>
+      <i class="fas fa-circle" style="font-size:8px"></i>
       <span id="connStatusText">Desconectado — configure o token e clique em INICIAR</span>
     </div>
 
+    <!-- RISK ALERT -->
     <div id="riskAlertBox" class="risk-alert"><i class="fas fa-exclamation-triangle"></i> <span id="riskAlertMessage"></span></div>
 
+    <!-- CREDENCIAIS -->
     <div class="card">
       <div class="card-header"><i class="fas fa-key"></i> Credenciais API</div>
       <div class="grid-2col">
@@ -149,949 +201,1244 @@ tr:hover td { background: var(--bg3); }
           <button onclick="saveDerivToken()" style="width:100%">Salvar Token</button>
         </div>
         <div>
-          <label>OpenAI Key (Opcional)</label>
+          <label>OpenAI Key (Opcional — análise IA)</label>
           <input type="password" id="openaiTokenInput" placeholder="sk-...">
+          <button onclick="saveOpenAIKey()" class="info" style="width:100%">Salvar OpenAI Key</button>
         </div>
       </div>
-      <div style="font-size:11px; color:var(--text3); padding: 8px; background: var(--bg3); border-radius:8px; margin-top:4px;">
+      <div style="font-size:11px;color:var(--text3);padding:8px;background:var(--bg3);border-radius:8px;margin-top:4px">
         <i class="fas fa-info-circle"></i> Obtenha seu token em <strong>app.deriv.com → Conta → Tokens API</strong> com permissão <em>Read + Trade</em>. Use conta Demo para testes.
       </div>
     </div>
 
+    <!-- CONTROLE DO BOT -->
     <div class="card">
       <div class="card-header"><i class="fas fa-play-circle"></i> Controle do Bot</div>
-      <div class="grid-2col" style="margin-bottom: 10px;">
+      <div class="grid-3col" style="margin-bottom:10px">
         <button class="primary" onclick="startBot()"><i class="fas fa-play"></i> INICIAR</button>
         <button class="warning" onclick="pauseBot()"><i class="fas fa-pause"></i> PAUSAR</button>
         <button class="danger" onclick="stopBot()"><i class="fas fa-stop"></i> PARAR</button>
-        <button onclick="resetDaily()"><i class="fas fa-redo"></i> Reset Diário</button>
       </div>
-      <div class="flex-between" style="margin-top: 6px;">
-        <span>Operação manual:</span>
-        <div style="display: flex; gap: 8px;">
-          <button class="success" onclick="manualTrade('CALL')"><i class="fas fa-arrow-up"></i> CALL MANUAL</button>
-          <button class="danger" onclick="manualTrade('PUT')"><i class="fas fa-arrow-down"></i> PUT MANUAL</button>
+      <div class="grid-4col">
+        <button class="success" onclick="manualTrade('CALL')"><i class="fas fa-arrow-up"></i> CALL MANUAL</button>
+        <button class="danger" onclick="manualTrade('PUT')"><i class="fas fa-arrow-down"></i> PUT MANUAL</button>
+        <button class="info" onclick="openCloudPopup()"><i class="fas fa-cloud"></i> NUVEM 24H</button>
+        <button onclick="resetDaily()"><i class="fas fa-redo"></i> RESET DIÁRIO</button>
+      </div>
+      <div class="flex-between" style="margin-top:10px">
+        <button class="danger" onclick="cancelOrCloseOrder()" style="width:100%"><i class="fas fa-times-circle"></i> CANCELAR / FECHAR ORDEM ATIVA</button>
+      </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="dashboard">
+      <div class="dash-card">
+        <div class="dash-card-title" id="profitCardTitle">Lucro Último Trade</div>
+        <div id="tradeProfit" class="dash-card-value positive">+0.00 USD</div>
+        <div id="tradeProfitPct" style="font-size:11px;color:var(--text2);margin-top:4px">—</div>
+        <div id="profitInfo" style="font-size:10px;color:var(--text3);margin-top:4px">
+          Meta: <span id="profitPercent">10%</span> · Stop: <span id="stopLossStatic">0.00</span>
         </div>
       </div>
+      <div class="dash-card">
+        <div class="dash-card-title">Trades Hoje</div>
+        <div id="tradesCount" class="dash-card-value">0/100</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:4px">Último: <span id="lastTrade">--:--</span></div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-card-title">Win Rate</div>
+        <div id="winRate" class="dash-card-value positive">0%</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:4px">
+          <span id="winCount">0</span>W / <span id="lossCount">0</span>L
+        </div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-card-title">Preço Atual</div>
+        <div id="currentPrice" class="dash-card-value">—</div>
+        <div id="priceChange" style="font-size:11px;color:var(--text2);margin-top:4px">+0.00000 (0.00%)</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-card-title">IA / Sinal</div>
+        <div id="aiDecision" class="dash-card-value" style="font-size:16px">—</div>
+        <div id="aiReason" style="font-size:10px;color:var(--text2);margin-top:4px">Aguardando...</div>
+      </div>
     </div>
 
-    <div class="grid-2col">
-      <div class="card">
-        <div class="card-header"><i class="fas fa-shield-alt"></i> SEGURANÇA</div>
-        <input type="range" id="securityLevel" min="10" max="100" value="70">
-        <div class="flex-between"><span>Nível:</span><span id="securityValue">70%</span></div>
-        <div class="flex-between"><span>RSI Range:</span><span id="rsiRangeDisplay">30/70</span></div>
-      </div>
-      <div class="card">
-        <div class="card-header"><i class="fas fa-bolt"></i> AGRESSIVIDADE</div>
-        <input type="range" id="riskLevel" min="10" max="100" value="40">
-        <div class="flex-between"><span>Nível:</span><span id="riskValue">40%</span></div>
-        <div class="flex-between"><span>Max Trades:</span><span id="maxTradesDisplay">40</span></div>
-      </div>
-    </div>
-
+    <!-- PARÂMETROS -->
     <div class="card">
-      <div class="card-header"><i class="fas fa-chart-simple"></i> Parâmetros de Trade</div>
+      <div class="card-header"><i class="fas fa-sliders-h"></i> Parâmetros de Trade</div>
       <div class="grid-2col">
         <div>
-          <label>Stake % do saldo</label>
-          <input type="number" id="stakePct" step="0.5" value="1.0">
-          <label>Stop Loss %</label>
-          <input type="number" id="slPct" step="0.5" value="5.0">
-          <label>Take Profit %</label>
-          <input type="number" id="tpPct" step="1" value="10.0">
-        </div>
-        <div>
-          <label>Ajuste automático <input type="checkbox" id="autoAdjust" style="width:auto;margin-bottom:0"></label>
-          <label style="margin-top:8px">Tipo de contrato</label>
-          <select id="tradeType">
-            <option value="multiplier">Multiplicador (SL/TP)</option>
-            <option value="binary">Binário (5 ticks)</option>
-          </select>
           <label>Ativo / Símbolo</label>
           <select id="assetSelector">
-            <option value="R_25">Sintético R_25</option>
-            <option value="R_50">Sintético R_50</option>
-            <option value="R_75">Sintético R_75</option>
-            <option value="R_100">Sintético R_100</option>
+            <option value="R_25">Volatilidade 25 (Sintético)</option>
+            <option value="R_100">Volatilidade 100 (Sintético)</option>
             <option value="frxEURUSD">EUR/USD (Forex)</option>
+            <option value="cryBTCUSD">Bitcoin (Cripto)</option>
+            <option value="cryETHUSD">Ethereum (Cripto)</option>
+            <option value="MULTI_CRYPTO">🔄 Ciclo Cripto (BTC, ETH)</option>
+          </select>
+          <div id="multiCryptoConfig">
+            <label>Lista de Criptos (separados por vírgula)</label>
+            <input type="text" id="cryptoListInput" value="cryBTCUSD, cryETHUSD" placeholder="cryBTCUSD, cryETHUSD">
+            <div style="font-size:10px;color:var(--text3)">Alterna a cada 60 ticks sem sinal.</div>
+          </div>
+          <label>Tipo de Contrato</label>
+          <select id="tradeType">
+            <option value="multiplier">Multiplicador (x400 — SL/TP)</option>
+            <option value="binary">Binário (5 ticks)</option>
           </select>
         </div>
-      </div>
-      <div class="flex-between" style="margin-top: 12px; background: var(--bg3); padding: 8px; border-radius: 12px;">
-        <span><i class="fas fa-crosshairs"></i> Meta diária: <strong id="dailyTarget">+0.00</strong> USD</span>
-        <span><i class="fas fa-hand-paper"></i> Stop diário: <strong id="dailyStop">0.00</strong> USD</span>
-        <span><i class="fas fa-coins"></i> Saldo: <strong id="balanceDisplay">0.00</strong> USD</span>
-      </div>
-    </div>
-
-    <div class="grid-2col">
-      <div class="card">
-        <div class="card-header"><i class="fas fa-chart-bar"></i> Último Trade</div>
-        <div id="tradeProfit" class="positive" style="font-size: 28px; font-weight:800;">0.00 USD</div>
-        <div id="tradeProfitPct" style="font-size:12px;">—</div>
-        <div style="margin-top: 8px;">
-          <div>Preço atual: <strong id="currentPrice">—</strong></div>
-          <div>Win Rate: <span id="winRate">0%</span> | Trades: <span id="tradesCount">0/∞</span></div>
-          <div>Wins: <span id="winCount">0</span> | Losses: <span id="lossCount">0</span></div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-header"><i class="fas fa-brain"></i> IA / Decisão</div>
-        <div id="aiDecision">— Aguardando análise —</div>
-        <div id="aiReason" style="font-size: 11px; color: var(--text2); margin-top: 6px;"></div>
-        <hr style="border-color:var(--border); margin: 10px 0;">
-        <div><i class="fas fa-clock"></i> Servidor: <span id="currentTime">--:--:--</span></div>
-        <div style="margin-top:4px; display:flex; align-items:center; gap:6px;">
-          <span class="api-dot offline" id="derivStatusDot"></span>
-          <span id="apiStatusText">Deriv API — desconectada</span>
+        <div>
+          <label>Gerenciamento — % do Saldo</label>
+          <div style="display:flex;gap:6px;margin-bottom:8px">
+            <div style="flex:1"><label>Stake %</label><input type="number" id="stakePct" value="1" step="0.1"></div>
+            <div style="flex:1"><label>Stop %</label><input type="number" id="slPct" value="5" step="0.1"></div>
+            <div style="flex:1"><label>Meta %</label><input type="number" id="tpPct" value="10" step="0.1"></div>
+          </div>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="autoAdjust" checked style="width:auto;margin-bottom:0">
+            Ajustar ao Ativo (Automático)
+          </label>
+          <div class="flex-between" style="margin-top:12px;background:var(--bg3);padding:10px;border-radius:10px;font-size:11px">
+            <span><i class="fas fa-crosshairs"></i> Meta: <strong id="dailyTarget">+0.00</strong> USD</span>
+            <span><i class="fas fa-hand-paper"></i> Stop: <strong id="dailyStop">0.00</strong> USD</span>
+            <span><i class="fas fa-coins"></i> Saldo: <strong id="balanceDisplay">0.00</strong> USD</span>
+          </div>
         </div>
       </div>
     </div>
 
+    <!-- SLIDERS -->
     <div class="grid-2col">
-      <div class="card"><div class="card-header"><i class="fas fa-chart-line"></i> Preço (Tempo Real)</div><div style="position:relative;height:160px;width:100%"><canvas id="priceChart"></canvas></div></div>
-      <div class="card"><div class="card-header"><i class="fas fa-coins"></i> Lucro Acumulado</div><div style="position:relative;height:160px;width:100%"><canvas id="profitChart"></canvas></div></div>
+      <div class="card">
+        <div class="card-header"><i class="fas fa-shield-alt"></i> Segurança</div>
+        <input type="range" id="securityLevel" min="10" max="100" value="70" step="5">
+        <div class="flex-between" style="font-size:11px;margin-top:4px">
+          <span>Nível: <strong id="securityValue">70%</strong></span>
+          <span style="color:var(--text3)">RSI: <span id="rsiRange">30/70</span></span>
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-top:6px">10% = Agressivo | 100% = Conservador</div>
+      </div>
+      <div class="card">
+        <div class="card-header"><i class="fas fa-bolt"></i> Agressividade</div>
+        <input type="range" id="riskLevel" min="10" max="100" value="40" step="5">
+        <div class="flex-between" style="font-size:11px;margin-top:4px">
+          <span>Nível: <strong id="riskValue">40%</strong></span>
+          <span style="color:var(--text3)">Max: <span id="maxTradesDisplay">40</span> trades</span>
+        </div>
+        <div style="font-size:10px;color:#ffe77f;margin-top:6px">10% = Conservador | 100% = MUITO AGRESSIVO</div>
+      </div>
     </div>
 
+    <!-- SIMULAÇÃO -->
+    <div id="simulationPanel" class="simulation-panel">
+      <div class="card-header"><i class="fas fa-chart-line"></i> Análise em Progresso</div>
+      <div class="simulation-timer" id="simulationTimer">ANALISANDO: 0.0s</div>
+      <div style="font-size:11px;color:var(--text2)">Verificando indicadores antes de executar...</div>
+      <div id="simulationResult" class="simulation-result"></div>
+    </div>
+
+    <!-- GRÁFICOS -->
+    <div class="grid-2col">
+      <div class="card">
+        <div class="card-header"><i class="fas fa-chart-line"></i> Preço (Tempo Real)</div>
+        <div style="position:relative;height:160px;width:100%"><canvas id="priceChart"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><i class="fas fa-coins"></i> Performance (Lucro)</div>
+        <div style="position:relative;height:160px;width:100%"><canvas id="profitChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- STATUS DAS APIs -->
+    <div class="api-status">
+      <div class="api-badge"><div id="derivStatus" class="api-dot api-offline"></div><span>Deriv API</span></div>
+      <div class="api-badge"><div id="coinGeckoStatus" class="api-dot api-paused"></div><span>CoinGecko</span></div>
+      <div class="api-badge"><div id="brapiStatus" class="api-dot api-paused"></div><span>Brapi</span></div>
+      <div class="api-badge"><div id="derivStatusDot2" class="api-dot api-offline"></div><span>Bot Engine</span></div>
+    </div>
+
+    <!-- TABELA DE TRADES -->
     <div class="card">
-      <div class="card-header"><i class="fas fa-list-ul"></i> Histórico de Trades (últimos 10)</div>
-      <div style="overflow-x: auto;">
-        <table id="tradesTable">
-          <thead><tr><th>Hora</th><th>Direção</th><th>Stake</th><th>Resultado</th><th>Lucro</th></tr></thead>
-          <tbody><tr><td colspan="5" style="text-align:center">Nenhum trade ainda</td></tr></tbody>
+      <div class="card-header"><i class="fas fa-list-ul"></i> Últimos Trades</div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>Hora</th><th>Direção</th><th>Valor</th><th>Resultado</th><th>Lucro</th></tr></thead>
+          <tbody id="tradesTable">
+            <tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text3)">Nenhum trade ainda</td></tr>
+          </tbody>
         </table>
       </div>
     </div>
 
+    <!-- LOGS -->
     <div class="card">
       <div class="card-header"><i class="fas fa-terminal"></i> Console / Logs</div>
-      <div id="logs" class="log-box"></div>
+      <div id="logs" class="log-box">
+        <div class="log-entry"><span class="log-time">[00:00:00]</span><span class="log-info">Sistema iniciado. Aguardando comandos...</span></div>
+      </div>
     </div>
-  </div><!-- oc-content -->
-</div><!-- app-wrapper -->
-
-<div id="simulationPanel" class="simulation-panel">
-  <div class="flex-between"><strong><i class="fas fa-chart-line"></i> SIMULAÇÃO ATIVA</strong><span id="simulationTimer">0.0s</span></div>
-  <div id="simulationResult"></div>
+  </div>
 </div>
-<button id="floatingSellBtn" class="close-order-btn" onclick="sellMultiplierContract()">FECHAR ORDEM</button>
+
+<!-- FLOATING SELL BTN -->
+<button id="floatingSellBtn" class="close-order-btn" onclick="cancelOrCloseOrder()"><i class="fas fa-times-circle"></i> FECHAR ORDEM</button>
+
+<!-- CLOUD POPUP -->
+<div class="popup-overlay" id="cloudPopup">
+  <div class="popup-container">
+    <div class="popup-header">
+      <h2><i class="fas fa-cloud"></i> Rodar Bot na Nuvem (24H)</h2>
+      <button class="close-btn" onclick="closeCloudPopup()">&times;</button>
+    </div>
+    <div class="popup-content">
+      <h3>Como funciona:</h3>
+      <ul style="padding-left:20px;margin-bottom:12px">
+        <li>O bot será executado em um servidor na nuvem 24 horas por dia</li>
+        <li>Você pode fechar esta página e o trading continuará</li>
+        <li>Configurações atuais serão aplicadas: Taxa, Stop Loss, Take Profit, etc.</li>
+        <li>Todos os trades estarão salvos em tempo real no Firebase</li>
+        <li>Você pode parar o bot a qualquer momento clicando novamente</li>
+      </ul>
+      <h3>Configurações que serão enviadas:</h3>
+      <div style="background:var(--bg3);padding:12px;border-radius:10px;font-size:12px;margin-bottom:12px">
+        <p><strong>Stake:</strong> <span id="cloudStake">0.35</span> USD</p>
+        <p><strong>Take Profit:</strong> +<span id="cloudTakeProfit">0.00</span> USD</p>
+        <p><strong>Stop Loss:</strong> <span id="cloudStopLoss">-0.35</span> USD</p>
+        <p><strong>Máx. Trades/dia:</strong> <span id="cloudMaxTrades">100</span></p>
+        <p><strong>Segurança:</strong> <span id="cloudSecurityLevel">70</span>%</p>
+      </div>
+      <div style="background:rgba(255,80,80,0.08);border:1px solid rgba(255,80,80,0.2);border-radius:10px;padding:12px;font-size:12px;color:#ff9090">
+        <strong>⚠️ Aviso:</strong> Este bot opera automaticamente. Monitore seus trades. Trading é arriscado — nunca invista mais do que pode perder.
+      </div>
+      <iframe src="https://deriv-server-ten.vercel.app/" frameborder="0" scrolling="yes" style="width:100%;height:400px;border-radius:12px;margin-top:14px;border:1px solid var(--border)"></iframe>
+    </div>
+    <div class="popup-footer">
+      <button onclick="closeCloudPopup()">Cancelar</button>
+      <button class="info" onclick="toggleCloudBot()"><i class="fas fa-rocket"></i> Ativar Bot na Nuvem</button>
+    </div>
+  </div>
+</div>
+
+<!-- TERMS POPUP -->
+<div class="popup-overlay" id="termsPopup">
+  <div class="popup-container">
+    <div class="popup-header">
+      <h2><i class="fas fa-file-contract"></i> Termos de Uso — Bot de Trading</h2>
+      <button class="close-btn" id="closeTermsBtn">&times;</button>
+    </div>
+    <div class="popup-content">
+      <h2>Bot de Trading Automatizado — Sistema Profissional</h2>
+      <p>⚠️ AVISO IMPORTANTE: O uso deste bot de trading envolve riscos significativos. Ele é projetado para operar em mercados financeiros reais, onde perdas podem ocorrer. Antes de usar, leia atentamente os termos abaixo:</p>
+      <p>1. <strong>Riscos de Trading:</strong> O trading automatizado com alavancagem pode resultar em perdas financeiras, incluindo a perda total do capital investido. Este bot é fornecido "no estado em que se encontra" e não garantimos resultados específicos.</p>
+      <p>2. <strong>Responsabilidade Pessoal:</strong> Você é o único responsável por qualquer decisão de investimento tomada com base nas operações deste bot.</p>
+      <p>3. <strong>Estratégias Profissionais:</strong> Este bot utiliza estratégias avançadas de análise técnica, incluindo RSI, Bollinger Bands, MACD e médias móveis. O desempenho passado não garante resultados futuros.</p>
+      <p>4. <strong>Gestão de Risco:</strong> Recomendamos usar stop-loss adequado e nunca arriscar mais do que 2% de seu capital por operação.</p>
+      <p>5. <strong>Conformidade Legal:</strong> Verifique as leis locais sobre trading automatizado e derivativos em sua jurisdição.</p>
+      <p>6. <strong>Consentimento:</strong> Ao usar este bot, você concorda com estes termos e reconhece os riscos associados ao trading automatizado.</p>
+    </div>
+    <div class="popup-footer">
+      <button id="acceptTermsBtn" class="primary">Aceitar e Continuar</button>
+    </div>
+  </div>
+</div>
 
 <script>
 // =============================================
-//  OCTOCOOKIE TRADER BOT — FIXED v2
-//  Correções: websocket, status dots, balance sub,
-//             forget ticks, reconnect logic
+//  OCTOCOOKIE TRADER BOT
+//  Design: OCTOCOOKIE | Lógica: NIB Trader
 // =============================================
 
-// --- FIREBASE (opcional) ---
+// --- FIREBASE ---
 let db;
 try {
-  firebase.initializeApp({
-    apiKey:"AIzaSyCi2w_2tSCZj_1An-dmPQyBevFxrJkEQds",
-    authDomain:"nibinbot.firebaseapp.com",
-    projectId:"nibinbot",
-    storageBucket:"nibinbot.firebasestorage.app",
-    messagingSenderId:"78157555518",
-    appId:"1:78157555518:web:3cc525509ad1fa59756e6f",
-    measurementId:"G-PYPQ9KWKB2"
-  });
-  db = firebase.database();
-} catch(e) { console.warn("Firebase não inicializado:", e); }
+    firebase.initializeApp({
+        apiKey:"AIzaSyCi2w_2tSCZj_1An-dmPQyBevFxrJkEQds",
+        authDomain:"nibinbot.firebaseapp.com",
+        projectId:"nibinbot",
+        storageBucket:"nibinbot.firebasestorage.app",
+        messagingSenderId:"78157555518",
+        appId:"1:78157555518:web:3cc525509ad1fa59756e6f",
+        measurementId:"G-PYPQ9KWKB2"
+    });
+    db = firebase.database();
+    const analytics = firebase.analytics();
+} catch(e){ console.warn("Firebase não inicializado:", e); }
 
 // --- CONFIG ---
 const CONFIG = {
-  derivToken: '',
-  openaiKey: '',
-  symbol: 'R_25',
-  multiplier: 400,
-  stakePct: 1.0,
-  stopLossPct: 5.0,
-  takeProfitPct: 10.0,
-  maxTrades: 100,
-  rsiLow: 30,
-  rsiHigh: 70,
-  securityLevel: 70,
-  riskLevel: 40,
-  minScore: 25,
-  balance: 0,
-
+    derivToken:'',
+    openaiKey:'',
+    cgApiKey:'CG-xHTaEMtFCvYd9q2sfeurjDwC',
+    brapiKey:'jANVFGBdizAfgwGyJBENwb',
+    symbol:'R_25',
+    multiplier:400,
+    stake:0.35,
+    stopLoss:-0.35,
+    takeProfit:0,
+    maxTrades:100,
+    rsiLow:30,
+    rsiHigh:70,
+    securityLevel:70,
+    riskLevel:40,
+    minScore:25,
+    maxVolatility:0.002,
+    cryptoList:['cryBTCUSD','cryETHUSD'],
+    cycleInterval:60,
+    balance:100,
+    tradePercent:0.10,
+    apiEndpoints:{
+        deriv:'wss://ws.binaryws.com/websockets/v3?app_id=1089',
+        coingecko:'https://api.coingecko.com/api/v3',
+        brapi:'https://brapi.dev/api'
+    }
 };
+CONFIG.takeProfit = CONFIG.balance * CONFIG.tradePercent;
 
 // --- STATE ---
 let state = {
-  botRunning: false,
-  strategyActive: false,
-  dailyProfit: 0,
-  lastProfit: 0,
-  lastProfitPercent: 0,
-  tradesToday: 0,
-  wins: 0,
-  losses: 0,
-  currentPrice: 0,
-  priceHistory: [],
-  trades: [],
-  ws: null,
-  wsConnected: false,
-  authorized: false,
-  currentTickSubscription: null,  // ← rastreia sub ativa
-  openContract: null,
-  balanceBeforeTrade: 0,
-  consecutiveLosses: 0,
-  charts: { profit: null, price: null },
-  reconnectTimer: null
+    botRunning:false,
+    strategyActive:false,
+    dailyProfit:0.0,
+    lastProfit:0.0,
+    lastProfitPercent:0,
+    tradesToday:0,
+    wins:0,
+    losses:0,
+    currentPrice:0.0,
+    priceHistory:[],
+    trades:[],
+    ws:null,
+    apiStatus:{ deriv:false, coingecko:false, brapi:false },
+    charts:{ profit:null, price:null, pingInterval:null },
+    consecutiveLosses:0,
+    isWaitingForRecovery:false,
+    isViable:false,
+    balanceBeforeTrade:0,
+    isCycling:false,
+    currentAssetIndex:0,
+    ticksSinceCycle:0,
+    openContract:null
 };
 
-let simulation = { active: false, direction: null, startTime: null, timer: null, predictionScore: 0, priceAtStart: 0 };
+let simulation = {
+    active:false, direction:null, startTime:null,
+    duration:1, timer:null, priceData:[], predictionScore:0,
+    priceAtStart:0, lastPrediction:null
+};
 
 // =============================================
-//  LOGS
+//  STATUS / UI HELPERS
 // =============================================
-function addLog(message, type='info') {
-  const logsEl = document.getElementById('logs');
-  const time = new Date().toLocaleTimeString('pt-BR');
-  const entry = document.createElement('div');
-  entry.className = 'log-entry';
-  entry.innerHTML = `<span class="log-${type}">[${time}] ${message}</span>`;
-  logsEl.prepend(entry);
-  while(logsEl.children.length > 50) logsEl.removeChild(logsEl.lastChild);
+function updateConnectionBar(status, message){
+    const bar = document.getElementById('connStatusBar');
+    const text = document.getElementById('connStatusText');
+    bar.className = `conn-status-bar ${status==='connected'?'connected':status==='connecting'?'connecting':''}`;
+    text.textContent = message;
+}
+
+function updateStatus(status){
+    const el = document.getElementById('botStatus');
+    const dot = document.getElementById('botStatusDot');
+    const labels = {online:'ONLINE',offline:'OFFLINE',paused:'PAUSADO',connecting:'CONECTANDO'};
+    el.innerHTML = '';
+    const dotEl = document.createElement('span');
+    dotEl.className = `api-dot ${status==='online'?'online':status==='paused'?'paused':'offline'}`;
+    el.appendChild(dotEl);
+    el.appendChild(document.createTextNode(' ' + (labels[status]||status.toUpperCase())));
+    el.className = `status ${status}`;
+    if(dot) dot.className = `api-dot api-${status==='online'?'online':status==='paused'?'paused':'offline'}`;
+}
+
+function updateAPIStatus(){
+    document.getElementById('derivStatus').className =
+        'api-dot ' + (state.apiStatus.deriv ? 'api-online' : 'api-offline');
+    document.getElementById('coinGeckoStatus').className = 'api-dot api-paused';
+    document.getElementById('brapiStatus').className = 'api-dot api-paused';
+}
+
+function addLog(message, type='info'){
+    const logsEl = document.getElementById('logs');
+    const time = new Date().toLocaleTimeString('pt-BR');
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    entry.innerHTML = `<span class="log-time">[${time}]</span><span class="log-${type}">${message}</span>`;
+    logsEl.prepend(entry);
+    if(logsEl.children.length > 50) logsEl.removeChild(logsEl.lastChild);
 }
 
 // =============================================
-//  STATUS UPDATES — CORRIGIDO
+//  REGULADORES
 // =============================================
-function setDotStatus(dotId, status) {
-  // status: 'online' | 'offline' | 'paused'
-  const el = document.getElementById(dotId);
-  if(!el) return;
-  el.className = `api-dot ${status}`;
+function updateSecurity(){
+    const level = parseInt(document.getElementById('securityLevel').value);
+    CONFIG.securityLevel = level;
+    document.getElementById('securityValue').textContent = level + '%';
+    const factor = (level - 10) / 90;
+    CONFIG.rsiLow = 40 - (20 * factor);
+    CONFIG.rsiHigh = 60 + (20 * factor);
+    CONFIG.maxTrades = Math.floor(10 + (100 - level) * 0.9);
+    document.getElementById('rsiRange').textContent = `${Math.floor(CONFIG.rsiLow)}/${Math.floor(CONFIG.rsiHigh)}`;
+    addLog(`Segurança: ${level}% | RSI: ${CONFIG.rsiLow.toFixed(1)}/${CONFIG.rsiHigh.toFixed(1)} | Max Trades: ${CONFIG.maxTrades}`, 'info');
+    checkRiskAlert();
 }
 
-function updateConnectionBar(status, message) {
-  // status: 'connected' | 'connecting' | 'error'
-  const bar = document.getElementById('connStatusBar');
-  const text = document.getElementById('connStatusText');
-  bar.className = `conn-status-bar ${status === 'connected' ? 'connected' : status === 'connecting' ? 'connecting' : ''}`;
-  text.textContent = message;
+function updateRisk(){
+    const risk = parseInt(document.getElementById('riskLevel').value);
+    CONFIG.riskLevel = risk;
+    document.getElementById('riskValue').textContent = risk + '%';
+    CONFIG.maxTrades = Math.floor((risk / 10) * 10);
+    CONFIG.minScore = Math.max(10, 40 - (risk - 10) * 0.3);
+    CONFIG.maxVolatility = 0.001 + (risk - 10) * 0.00001;
+    document.getElementById('maxTradesDisplay').textContent = CONFIG.maxTrades;
+    addLog(`Agressividade: ${risk}% | Max Trades: ${CONFIG.maxTrades} | Min Score: ${CONFIG.minScore.toFixed(0)}%`, 'warn');
+    checkRiskAlert();
 }
 
-function setBotStatusText(text) {
-  document.getElementById('botStatusText').textContent = text;
-}
-
-// =============================================
-//  WEBSOCKET — CORRIGIDO
-// =============================================
-function connectDerivWebSocket() {
-  const wsState = state.ws ? state.ws.readyState : WebSocket.CLOSED;
-  if(wsState === WebSocket.OPEN || wsState === WebSocket.CONNECTING) {
-    addLog('Conexao ja ativa.', 'warn');
-    return;
-  }
-  if(state.reconnectTimer) { clearTimeout(state.reconnectTimer); state.reconnectTimer = null; }
-
-  state.wsConnected = false;
-  state.authorized  = false;
-  state.strategyActive = false;
-  state.currentTickSubscription = null;
-  state.fatalError = false;
-
-  updateConnectionBar('connecting', 'Conectando ao servidor Deriv...');
-  setDotStatus('derivStatus', 'paused');
-  setDotStatus('derivStatusDot', 'paused');
-  addLog('Conectando à Binary/Deriv API...', 'info');
-
-  try {
-    state.ws = new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
-  } catch(e) {
-    addLog('Falha ao criar WebSocket: ' + e.message, 'error');
-    updateConnectionBar('error', 'Erro: ' + e.message);
-    return;
-  }
-
-  state.ws.onopen = () => {
-    state.wsConnected = true;
-    state.reconnectAttempts = 0;
-    addLog('Conectado — autorizando token...', 'success');
-    updateConnectionBar('connecting', 'Conectado — autorizando...');
-    // So envia authorize aqui. Todo o resto e acionado pelo handler do authorize.
-    state.ws.send(JSON.stringify({ authorize: CONFIG.derivToken }));
-  };
-
-  state.ws.onmessage = (e) => {
-    let data;
-    try { data = JSON.parse(e.data); } catch(err) { return; }
-    handleDerivMessage(data);
-  };
-
-  state.ws.onclose = (evt) => {
-    state.wsConnected = false;
-    state.authorized  = false;
-    state.strategyActive = false;
-    state.currentTickSubscription = null;
-    if(strategyLoopTimeout) { clearTimeout(strategyLoopTimeout); strategyLoopTimeout = null; }
-    setDotStatus('derivStatus', 'offline');
-    setDotStatus('derivStatusDot', 'offline');
-    document.getElementById('apiStatusText').textContent = 'Deriv API — desconectada';
-    // Log detalhado para diagnostico
-    const reason = evt.reason ? (' | motivo: ' + evt.reason) : '';
-    const wasClean = evt.wasClean ? ' [limpo]' : ' [abrupto]';
-    addLog('WS fechado — code: ' + evt.code + wasClean + reason, evt.wasClean ? 'info' : 'warn');
-
-    // Erro fatal (token invalido, permissao negada) — nao reconecta
-    if(state.fatalError) {
-      setBotStatusText('ERRO');
-      updateConnectionBar('error', 'Encerrado — verifique o token');
-      state.botRunning = false;
-      return;
-    }
-
-    // Fechamento limpo pelo usuario
-    if(evt.code === 1000 || evt.code === 1001) {
-      setBotStatusText('OFFLINE');
-      updateConnectionBar('error', 'Desconectado');
-      addLog('WebSocket fechado.', 'info');
-      return;
-    }
-
-    // Queda inesperada enquanto bot ativo — backoff exponencial
-    if(state.botRunning) {
-      state.reconnectAttempts = (state.reconnectAttempts || 0) + 1;
-      const delay = Math.min(5000 * state.reconnectAttempts, 30000);
-      setBotStatusText('RECONECTANDO');
-
-      // Codigo 1006 = conexao abruptamente encerrada pelo servidor (sem handshake de close)
-      // Causas comuns: flood de mensagens, token sem permissao read, IP bloqueado
-      const hint1006 = evt.code === 1006
-        ? ' — Dica: verifique se o token tem permissao Read+Trade'
-        : '';
-
-      updateConnectionBar('error',
-        'code ' + evt.code + hint1006 + ' | tentativa ' + state.reconnectAttempts + ' em ' + (delay/1000) + 's');
-      addLog(
-        'Desconectado (code ' + evt.code + (evt.wasClean ? ' limpo' : ' ABRUPTO') + ')' + hint1006 +
-        '. Reconectando em ' + (delay/1000) + 's...', 'warn');
-
-      state.reconnectTimer = setTimeout(() => {
-        if(state.botRunning) connectDerivWebSocket();
-      }, delay);
+function checkRiskAlert(){
+    const box = document.getElementById('riskAlertBox');
+    const msg = document.getElementById('riskAlertMessage');
+    const risky = CONFIG.riskLevel > 80 || CONFIG.securityLevel < 30;
+    if(risky){
+        let m = '';
+        if(CONFIG.riskLevel > 80 && CONFIG.securityLevel < 30) m = 'PERIGO CRÍTICO! Risco muito alto + Segurança muito baixa = perdas potenciais massivas!';
+        else if(CONFIG.riskLevel > 80) m = `Risco MUITO ALTO (${CONFIG.riskLevel}%) — Reduza para 60% ou menos.`;
+        else m = `Segurança MUITO BAIXA (${CONFIG.securityLevel}%) — Aumente para 50% ou mais.`;
+        msg.textContent = m;
+        box.classList.add('show');
     } else {
-      setBotStatusText('OFFLINE');
-      updateConnectionBar('error', 'Desconectado (code ' + evt.code + ')');
-      addLog('WebSocket fechado (code ' + evt.code + ').', 'info');
+        box.classList.remove('show');
     }
-  };
-
-  state.ws.onerror = (e) => {
-    addLog('Erro no WebSocket — code ' + (e.code || '?') + '. Verifique o console (F12).', 'error');
-    console.error('[OCTOCOOKIE WS ERROR]', e);
-  };
 }
 
-function wsSend(payload) {
-  if(!state.ws || state.ws.readyState !== WebSocket.OPEN) {
-    addLog('WS não disponível para envio', 'error');
-    return false;
-  }
-  state.ws.send(JSON.stringify(payload));
-  return true;
-}
-
-// =============================================
-//  AUTORIZAÇÃO + SUBSCRIÇÕES — CORRIGIDO
-// =============================================
-function authorize() {
-  if(!CONFIG.derivToken) {
-    addLog('Token não configurado! Cole seu token e clique em Salvar.', 'error');
-    updateConnectionBar('error', 'Token não configurado');
-    return;
-  }
-  wsSend({ authorize: CONFIG.derivToken });
-}
-
-function subscribeTicks() {
-  if(!state.wsConnected) return;
-  // Cancela sub anterior
-  if(state.currentTickSubscription) {
-    wsSend({ forget: state.currentTickSubscription });
-    state.currentTickSubscription = null;
-  }
-  addLog('Subscrevendo ticks: ' + CONFIG.symbol, 'info');
-  wsSend({ ticks: CONFIG.symbol, subscribe: 1 });
-}
-
-function subscribeBalance() {
-  // Chamado com delay para nao sobrecarregar a API logo apos authorize+ticks
-  setTimeout(() => {
-    if(state.wsConnected && state.authorized) {
-      wsSend({ balance: 1, subscribe: 1 });
+function updateBalance(){
+    const auto = document.getElementById('autoAdjust').checked;
+    let sPct, slPct, tpPct;
+    if(auto){
+        if(CONFIG.symbol.startsWith('cry')||state.isCycling){ sPct=2.0; slPct=10.0; tpPct=15.0; }
+        else if(CONFIG.symbol.startsWith('frx')){ sPct=1.0; slPct=3.0; tpPct=5.0; }
+        else { sPct=0.5; slPct=2.0; tpPct=5.0; }
+        document.getElementById('stakePct').value = sPct;
+        document.getElementById('slPct').value = slPct;
+        document.getElementById('tpPct').value = tpPct;
+    } else {
+        sPct = parseFloat(document.getElementById('stakePct').value) || 1;
+        slPct = parseFloat(document.getElementById('slPct').value) || 5;
+        tpPct = parseFloat(document.getElementById('tpPct').value) || 10;
     }
-  }, 2000);
+    CONFIG.stake = (CONFIG.balance * sPct) / 100;
+    CONFIG.stopLoss = -(CONFIG.balance * slPct) / 100;
+    CONFIG.takeProfit = (CONFIG.balance * tpPct) / 100;
+    const dtEl = document.getElementById('dailyTarget');
+    const dsEl = document.getElementById('dailyStop');
+    const blEl = document.getElementById('balanceDisplay');
+    if(dtEl) dtEl.textContent = '+' + CONFIG.takeProfit.toFixed(2);
+    if(dsEl) dsEl.textContent = CONFIG.stopLoss.toFixed(2);
+    if(blEl) blEl.textContent = CONFIG.balance.toFixed(2);
+    if(document.getElementById('profitPercent')) document.getElementById('profitPercent').textContent = tpPct + '%';
+    if(document.getElementById('stopLossStatic')) document.getElementById('stopLossStatic').textContent = CONFIG.stopLoss.toFixed(2) + ' USD';
 }
 
 // =============================================
-//  HANDLER DE MENSAGENS — CORRIGIDO
+//  TOKEN SAVE
 // =============================================
-function handleDerivMessage(data) {
-  // Trata erros da API
-  if(data.error) {
-    const code = data.error.code || '';
-    const msg  = data.error.message || 'Erro desconhecido';
-    addLog('Erro API [' + code + ']: ' + msg, 'error');
-
-    const fatalCodes = ['InvalidToken','AuthorizationRequired','InvalidAppID','DisabledClient'];
-    if(fatalCodes.includes(code)) {
-      // Marca como fatal para onclose nao tentar reconectar
-      state.fatalError = true;
-      state.botRunning = false;
-      updateConnectionBar('error', 'Token/App ID invalido: ' + msg);
-      setBotStatusText('ERRO');
-      // Fecha o socket — onclose vai ver fatalError=true e nao reconecta
-      if(state.ws) state.ws.close(1000, code);
-    } else if(code === 'RateLimit') {
-      addLog('Rate limit — aguardando 15s...', 'warn');
-      setTimeout(() => { if(state.authorized && state.wsConnected) subscribeTicks(); }, 15000);
+function saveDerivToken(){
+    const token = document.getElementById('derivTokenInput').value.trim();
+    if(token){
+        CONFIG.derivToken = token;
+        localStorage.setItem('userDerivToken', token);
+        addLog('Token Deriv salvo.', 'success');
+    } else {
+        addLog('Token vazio — não salvo.', 'warn');
     }
-    // Nao retorna para outros erros (ex: proposta recusada) — deixa o bot continuar
-    return;
-  }
+}
 
-  switch(data.msg_type) {
-    case 'authorize':
-      state.authorized = true;
-      const acct = data.authorize;
-      addLog(`✅ Autenticado: ${acct.email} | Conta: ${acct.loginid} | Moeda: ${acct.currency}`, 'success');
-      updateConnectionBar('connected', `Conectado como ${acct.email} (${acct.loginid}) — ${acct.is_virtual ? 'DEMO' : 'REAL'}`);
-      setDotStatus('derivStatus', 'online');
-      setDotStatus('derivStatusDot', 'online');
-      setBotStatusText('ONLINE');
-      document.getElementById('apiStatusText').textContent = `Deriv API — ${acct.is_virtual ? 'DEMO' : 'REAL'} | ${acct.loginid}`;
-      CONFIG.balance = parseFloat(acct.balance) || 0;
-      updateBalance();
-      updateUI();
-      // Sequencia: primeiro ticks, depois balance com delay
-      // Mandar tudo junto causa sobrecarga e a API fecha (code 1006)
-      subscribeTicks();
-      subscribeBalance();  // ja tem delay interno de 2s
-      state.strategyActive = true;
-      startStrategyLoop();
-      break;
+function saveOpenAIKey(){
+    const key = document.getElementById('openaiTokenInput').value.trim();
+    if(key){ CONFIG.openaiKey = key; localStorage.setItem('userOpenAIKey', key); addLog('OpenAI Key salva.', 'success'); }
+}
 
-    case 'balance':
-      CONFIG.balance = parseFloat(data.balance.balance);
-      updateBalance();
-      updateUI();
-      break;
+// =============================================
+//  BOT CONTROLS
+// =============================================
+function startBot(){
+    if(state.botRunning){ addLog('Bot já está rodando.', 'warn'); return; }
+    if(!CONFIG.derivToken){ addLog('Configure o token primeiro!', 'error'); return; }
+    addLog('Iniciando bot de trading...', 'info');
+    state.botRunning = true;
+    updateStatus('connecting');
+    updateConnectionBar('connecting', 'Conectando ao servidor Deriv...');
+    connectDerivWebSocket();
+}
 
-    case 'tick':
-      // Salva o subscription_id para poder fazer forget depois
-      if(data.subscription && data.subscription.id) {
-        state.currentTickSubscription = data.subscription.id;
-      }
-      state.currentPrice = parseFloat(data.tick.quote);
-      state.priceHistory.push(state.currentPrice);
-      if(state.priceHistory.length > 200) state.priceHistory.shift();
-      document.getElementById('currentPrice').textContent = state.currentPrice.toFixed(5);
-      updateCharts();
-      break;
+function pauseBot(){
+    if(!state.botRunning) return;
+    addLog('Bot pausado.', 'warn');
+    state.botRunning = false;
+    state.strategyActive = false;
+    if(simulation.active) stopSimulation();
+    updateStatus('paused');
+    updateConnectionBar('error', 'Bot pausado pelo usuário');
+}
 
-    case 'proposal':
-      if(data.proposal) {
-        addLog(`Proposta recebida: ${data.proposal.display_value} USD — comprando...`, 'info');
-        wsSend({ buy: data.proposal.id, price: data.proposal.ask_price });
-      }
-      break;
+function stopBot(){
+    addLog('Parando bot...', 'info');
+    state.botRunning = false;
+    state.strategyActive = false;
+    if(simulation.active) stopSimulation();
+    if(state.ws){ state.ws.close(); state.ws = null; }
+    updateStatus('offline');
+    updateConnectionBar('error', 'Bot parado');
+    addLog('Bot parado.', 'info');
+}
 
-    case 'buy':
-      if(data.buy) {
-        state.openContract = {
-          id: data.buy.contract_id,
-          profit: 0,
-          buy_price: parseFloat(data.buy.buy_price)
-        };
-        addLog(`✅ Contrato aberto #${data.buy.contract_id} | Comprado por ${data.buy.buy_price} USD`, 'success');
+function resetDaily(){
+    state.dailyProfit=0; state.tradesToday=0; state.wins=0; state.losses=0;
+    state.trades=[]; state.consecutiveLosses=0; state.isWaitingForRecovery=false; state.isViable=false;
+    updateUI(); updateTradesTable();
+    addLog('Estatísticas diárias resetadas.', 'info');
+}
+
+function manualTrade(direction){
+    if(!state.botRunning){ addLog('Inicie o bot primeiro.', 'error'); return; }
+    addLog(`Iniciando análise de segurança para ${direction}...`, 'info');
+    runSecurityAnalysis(direction);
+}
+
+function cancelOrCloseOrder(){
+    if(state.openContract && state.openContract.id){
+        sellMultiplierContract(state.openContract.id);
+    } else if(state.ws && state.ws.readyState===1){
+        state.ws.send(JSON.stringify({ forget_all:'proposal' }));
+        addLog('Propostas pendentes canceladas.', 'warn');
+    }
+}
+
+function cycleNextAsset(){
+    if(!state.isCycling) return;
+    if(state.ws && state.ws.readyState===1) state.ws.send(JSON.stringify({ forget_all:'ticks' }));
+    state.currentAssetIndex = (state.currentAssetIndex+1) % CONFIG.cryptoList.length;
+    CONFIG.symbol = CONFIG.cryptoList[state.currentAssetIndex];
+    state.priceHistory=[]; state.ticksSinceCycle=0;
+    addLog(`Ciclando para: ${CONFIG.symbol}`, 'info');
+    subscribeTicks();
+}
+
+// =============================================
+//  CLOUD
+// =============================================
+function openCloudPopup(){
+    document.getElementById('cloudPopup').style.display='flex';
+    document.body.style.overflow='hidden';
+    document.getElementById('cloudStake').textContent = CONFIG.stake.toFixed(2);
+    document.getElementById('cloudTakeProfit').textContent = CONFIG.takeProfit.toFixed(2);
+    document.getElementById('cloudStopLoss').textContent = CONFIG.stopLoss.toFixed(2);
+    document.getElementById('cloudMaxTrades').textContent = CONFIG.maxTrades;
+    document.getElementById('cloudSecurityLevel').textContent = CONFIG.securityLevel;
+}
+function closeCloudPopup(){ document.getElementById('cloudPopup').style.display='none'; document.body.style.overflow='auto'; }
+
+function toggleCloudBot(){
+    if(!CONFIG.derivToken){ alert('Configure o token primeiro.'); return; }
+    if(typeof db==='undefined'){ alert('Firebase não conectado.'); return; }
+    const userId = (CONFIG.derivToken||'sessao_anonima').replace(/[.#$[\]]/g,'_');
+    const ref = db.ref('bot_sessions/'+userId+'/cloud_command');
+    ref.once('value').then(snap => {
+        const status = snap.val()?.status||'STOPPED';
+        if(status==='RUNNING'){
+            ref.set({ status:'STOPPED', timestamp:Date.now() });
+            addLog('Comando enviado: PARAR servidor na nuvem.', 'info');
+            alert('Comando de PARADA enviado para a nuvem.');
+        } else {
+            ref.set({ status:'RUNNING', token:CONFIG.derivToken, config:{
+                tradePercent:CONFIG.tradePercent, takeProfit:CONFIG.takeProfit,
+                stopLoss:CONFIG.stopLoss, symbol:CONFIG.symbol,
+                rsiLow:CONFIG.rsiLow, rsiHigh:CONFIG.rsiHigh,
+                maxTrades:CONFIG.maxTrades, securityLevel:CONFIG.securityLevel
+            }, timestamp:Date.now() });
+            addLog('Comando enviado: INICIAR servidor na nuvem (24h).', 'success');
+            alert('Comando enviado! Bot iniciará no servidor em instantes.');
+        }
+    });
+}
+
+// =============================================
+//  WEBSOCKET
+// =============================================
+function connectDerivWebSocket(){
+    if(state.ws && state.ws.readyState===1) return;
+    state.ws = new WebSocket(CONFIG.apiEndpoints.deriv);
+
+    state.ws.onopen = function(){
+        addLog('Conectado ao servidor Deriv!', 'success');
+        state.apiStatus.deriv = true;
+        updateAPIStatus();
+        state.pingInterval = setInterval(() => {
+            if(state.ws && state.ws.readyState===1) state.ws.send(JSON.stringify({ ping:1 }));
+        }, 30000);
+        authorize();
+    };
+
+    state.ws.onmessage = function(msg){
+        try { handleMessage(JSON.parse(msg.data)); } catch(e){}
+    };
+
+    state.ws.onclose = function(event){
+        const reasons = {1000:'Fechamento normal',1001:'Servidor desligando',1002:'Erro de protocolo',1006:'Fechamento abrupto — verifique sua conexão',1008:'Violação de política — verifique o token'};
+        const reason = reasons[event.code] || 'Causa desconhecida';
+        addLog(`Desconectado: ${reason} (Code: ${event.code}). Reconectando em 5s...`, 'warn');
+        state.apiStatus.deriv = false;
+        state.strategyActive = false;
+        if(state.pingInterval) clearInterval(state.pingInterval);
+        updateAPIStatus();
+        updateConnectionBar('error', `Desconectado (${event.code}) — ${reason}`);
+        updateStatus('offline');
+        if(simulation.active) stopSimulation();
+        setTimeout(() => { if(state.botRunning) connectDerivWebSocket(); }, 5000);
+    };
+
+    state.ws.onerror = function(err){
+        addLog('Erro WebSocket. Verifique o console (F12).', 'error');
+        console.error('[OCTOCOOKIE WS ERROR]', err);
+    };
+}
+
+function authorize(){ state.ws.send(JSON.stringify({ authorize:CONFIG.derivToken })); }
+function subscribeBalance(){ state.ws.send(JSON.stringify({ balance:1, subscribe:1 })); }
+function subscribeTicks(){ state.ws.send(JSON.stringify({ ticks:CONFIG.symbol, subscribe:1 })); }
+
+// =============================================
+//  MESSAGE HANDLER
+// =============================================
+function handleMessage(data){
+    if(data.error){
+        addLog('Erro API: '+data.error.message, 'error');
+        if(data.echo_req && (data.echo_req.buy||data.echo_req.proposal)){
+            state.openContract = null; updateUI();
+        }
+        return;
+    }
+
+    if(data.msg_type==='authorize'){
+        addLog(`Autenticado: ${data.authorize.email} | ${data.authorize.loginid} | ${data.authorize.is_virtual?'DEMO':'REAL'}`, 'success');
+        updateConnectionBar('connected', `Conectado como ${data.authorize.email} (${data.authorize.loginid}) — ${data.authorize.is_virtual?'DEMO':'REAL'}`);
+        updateStatus('online');
+        CONFIG.balance = parseFloat(data.authorize.balance)||CONFIG.balance;
+        updateBalance();
+        subscribeBalance();
+        subscribeTicks();
+        state.strategyActive = false; // vai ser setada em startTradingStrategy
+        startTradingStrategy();
+    }
+
+    if(data.msg_type==='balance'){
+        const nb = parseFloat(data.balance.balance);
+        if(nb!==CONFIG.balance){ CONFIG.balance=nb; updateBalance(); addLog(`Saldo: ${nb.toFixed(2)} USD`, 'info'); }
+    }
+
+    if(data.msg_type==='tick'){
+        if(state.isCycling){
+            state.ticksSinceCycle++;
+            if(state.ticksSinceCycle>CONFIG.cycleInterval && !state.openContract && !simulation.active){ cycleNextAsset(); return; }
+        }
+        updatePrice(data.tick.quote);
+    }
+
+    if(data.msg_type==='proposal'){
+        state.ws.send(JSON.stringify({ buy:data.proposal.id, price:data.proposal.ask_price }));
+    }
+
+    if(data.msg_type==='buy'){
+        addLog(`Ordem executada! ID: ${data.buy.contract_id} | Preço: ${data.buy.buy_price} USD`, 'success');
+        state.openContract = { id:data.buy.contract_id, buy_price:data.buy.buy_price, profit:0 };
         updateUI();
-        wsSend({ proposal_open_contract: 1, contract_id: data.buy.contract_id, subscribe: 1 });
-        document.getElementById('floatingSellBtn').classList.add('show');
-      }
-      break;
-
-    case 'proposal_open_contract': {
-      const c = data.proposal_open_contract;
-      if(!c) break;
-      if(c.is_sold) {
-        handleTradeResult(c);
-        state.openContract = null;
-        updateUI();
-        document.getElementById('floatingSellBtn').classList.remove('show');
-        document.getElementById('floatingSellBtn').textContent = 'FECHAR ORDEM';
-      } else if(c.status === 'open') {
-        if(state.openContract) state.openContract.profit = parseFloat(c.profit) || 0;
-        updateUI();
-        const pStr = (c.profit >= 0 ? '+' : '') + parseFloat(c.profit).toFixed(2);
-        document.getElementById('floatingSellBtn').textContent = `FECHAR ORDEM (${pStr} USD)`;
-      }
-      break;
+        state.ws.send(JSON.stringify({ proposal_open_contract:1, contract_id:data.buy.contract_id, subscribe:1 }));
+        showMultiplierCloseButton(data.buy.contract_id, 0);
     }
 
-    case 'sell':
-      addLog(`Ordem fechada: ${data.sell ? data.sell.sold_for + ' USD' : 'ok'}`, 'info');
-      break;
+    if(data.msg_type==='proposal_open_contract'){
+        const c = data.proposal_open_contract;
+        if(c.is_sold){
+            state.openContract = null;
+            const btn = document.getElementById('floatingSellBtn');
+            if(btn) btn.classList.remove('show');
+            handleTradeResult(c);
+        } else if(c.status==='open'){
+            if(!state.openContract||state.openContract.id!==c.contract_id){
+                state.openContract = { id:c.contract_id, buy_price:c.buy_price, profit:c.profit };
+            }
+            state.openContract.profit = c.profit;
+            updateUI();
+            showMultiplierCloseButton(c.contract_id, c.profit);
+        }
+    }
 
-    default:
-      // Ignora silenciosamente mensagens desconhecidas (heartbeat, etc.)
-      break;
-  }
+    if(data.msg_type==='sell'){
+        addLog(`Ordem fechada: ${data.sell?data.sell.sold_for+' USD':'ok'}`, 'info');
+    }
 }
 
 // =============================================
 //  TRADE REQUEST
 // =============================================
-function requestTrade(direction) {
-  if(!state.wsConnected || !state.authorized) {
-    addLog('API não conectada/autorizada. Não é possível operar.', 'error');
-    return;
-  }
-  if(state.openContract) { addLog('Já existe contrato aberto', 'warn'); return; }
-  if(state.tradesToday >= CONFIG.maxTrades) { addLog('Limite de trades diário atingido', 'warn'); pauseBot(); return; }
+function requestTrade(direction){
+    if(!state.apiStatus.deriv){ addLog('API Deriv não conectada.', 'error'); return; }
+    if(state.openContract){ addLog('Já existe operação em andamento.', 'warn'); return; }
+    if(typeof CONFIG.balance!=='number'||CONFIG.balance<=0){ addLog('Balance inválido. Aguardando API...', 'error'); return; }
+    if(typeof CONFIG.tradePercent!=='number'||CONFIG.tradePercent<=0){ CONFIG.tradePercent=0.10; }
 
-  let stake = (CONFIG.balance * CONFIG.stakePct) / 100;
-  stake = Math.max(1.0, Math.min(stake, CONFIG.balance * 0.95));
-  if(state.consecutiveLosses >= 3) {
-    stake = Math.max(1.0, stake * 0.5);
-    addLog(`3 perdas consecutivas — stake reduzido para ${stake.toFixed(2)} USD`, 'warn');
-  }
-  stake = parseFloat(stake.toFixed(2));
+    state.balanceBeforeTrade = CONFIG.balance;
+    let stake = CONFIG.stake;
+    stake = Math.max(1.0, stake);
+    stake = Math.min(stake, CONFIG.balance*0.95);
+    if(state.consecutiveLosses>=3){ stake=Math.max(1.0,stake*0.5); addLog(`Stake reduzido (${state.consecutiveLosses} perdas): ${stake.toFixed(2)} USD`, 'warn'); }
+    stake = parseFloat((Math.round(stake*100)/100).toFixed(2));
+    if(isNaN(stake)||stake<1||stake>CONFIG.balance){ addLog(`Stake inválido: ${stake}. Trade cancelado.`, 'error'); return; }
 
-  state.balanceBeforeTrade = CONFIG.balance;
-  const stopLossAmount  = parseFloat(((CONFIG.balance * CONFIG.stopLossPct)  / 100).toFixed(2));
-  const takeProfitAmount = parseFloat(((CONFIG.balance * CONFIG.takeProfitPct) / 100).toFixed(2));
+    const tradeType = document.getElementById('tradeType')?document.getElementById('tradeType').value:'multiplier';
 
-  const tradeType = document.getElementById('tradeType').value;
-
-  if(tradeType === 'multiplier') {
-    const contractType = direction === 'CALL' ? 'MULTUP' : 'MULTDOWN';
-    addLog(`→ Proposta MULTIPLIER ${direction} | Stake: ${stake} USD | SL: ${stopLossAmount} | TP: ${takeProfitAmount}`, 'info');
-    wsSend({
-      proposal: 1, amount: stake, basis: 'stake',
-      contract_type: contractType, currency: 'USD',
-      symbol: CONFIG.symbol, multiplier: CONFIG.multiplier,
-      limit_order: { stop_loss: stopLossAmount, take_profit: takeProfitAmount }
-    });
-  } else {
-    const contractType = direction === 'CALL' ? 'CALL' : 'PUT';
-    addLog(`→ Proposta BINARY ${direction} | Stake: ${stake} USD | 5 ticks`, 'info');
-    wsSend({
-      proposal: 1, amount: stake, basis: 'stake',
-      contract_type: contractType, currency: 'USD',
-      symbol: CONFIG.symbol, duration: 5, duration_unit: 't'
-    });
-  }
-}
-
-function sellMultiplierContract() {
-  if(state.openContract && state.ws) {
-    wsSend({ sell: state.openContract.id, price: 0 });
-    addLog(`Fechando contrato #${state.openContract.id}...`, 'warn');
-  }
-}
-
-// =============================================
-//  RESULTADO DO TRADE
-// =============================================
-function handleTradeResult(contract) {
-  const profit = parseFloat(contract.profit) || 0;
-  const result = profit >= 0 ? 'WIN' : 'LOSS';
-  const directionRaw = contract.contract_type || '';
-  const direction = directionRaw.includes('UP') || directionRaw === 'CALL' ? 'CALL' : 'PUT';
-
-  state.lastProfit = profit;
-  state.lastProfitPercent = state.balanceBeforeTrade ? (profit / state.balanceBeforeTrade) * 100 : 0;
-  state.dailyProfit += profit;
-  state.tradesToday++;
-
-  if(result === 'WIN') { state.wins++; state.consecutiveLosses = 0; }
-  else { state.losses++; state.consecutiveLosses++; }
-
-  state.trades.unshift({
-    id: contract.contract_id || '—',
-    time: new Date().toLocaleTimeString('pt-BR'),
-    direction,
-    amount: (contract.buy_price || state.balanceBeforeTrade * CONFIG.stakePct / 100).toFixed(2),
-    result,
-    profit
-  });
-
-  updateUI();
-  updateTradesTable();
-  updateCharts();
-
-  addLog(
-    `${result === 'WIN' ? '✅' : '❌'} ${result} | ${direction} | Lucro: ${profit >= 0 ? '+' : ''}${profit.toFixed(2)} USD (${state.lastProfitPercent.toFixed(2)}%)`,
-    result === 'WIN' ? 'success' : 'error'
-  );
-
-  // Verifica stop loss diário
-  if(state.dailyProfit <= -(CONFIG.balance * CONFIG.stopLossPct / 100)) {
-    addLog('⛔ Stop Loss diário atingido — parando bot', 'error');
-    stopBot();
-  }
-}
-
-// =============================================
-//  ESTRATÉGIA RSI + SMA
-// =============================================
-function calculateRSI(prices, period=14) {
-  if(prices.length < period+1) return 50;
-  let gains=0, losses=0;
-  for(let i=prices.length-period; i<prices.length; i++) {
-    const ch = prices[i] - prices[i-1];
-    if(ch >= 0) gains += ch; else losses += Math.abs(ch);
-  }
-  const avgGain = gains/period, avgLoss = losses/period;
-  if(avgLoss === 0) return 100;
-  return 100 - (100 / (1 + avgGain/avgLoss));
-}
-
-function calculateSMA(prices, period) {
-  if(prices.length < period) return null;
-  return prices.slice(-period).reduce((a,b)=>a+b,0)/period;
-}
-
-let strategyLoopTimeout = null;
-
-function startStrategyLoop() {
-  if(strategyLoopTimeout) clearTimeout(strategyLoopTimeout);
-  if(!state.botRunning || !state.strategyActive) return;
-  if(state.openContract || simulation.active) { strategyLoopTimeout = setTimeout(startStrategyLoop, 1000); return; }
-  if(state.priceHistory.length < 25) { strategyLoopTimeout = setTimeout(startStrategyLoop, 1000); return; }
-
-  const rsi = calculateRSI(state.priceHistory, 14);
-  const sma = calculateSMA(state.priceHistory, 20);
-  const price = state.currentPrice;
-
-  let direction = null;
-  if(rsi < CONFIG.rsiLow && price > sma) direction = 'CALL';
-  else if(rsi > CONFIG.rsiHigh && price < sma) direction = 'PUT';
-
-  // Atualiza painel de IA
-  document.getElementById('aiDecision').textContent = direction
-    ? `→ SINAL: ${direction}`
-    : '— Aguardando sinal —';
-  document.getElementById('aiReason').textContent =
-    `RSI: ${rsi.toFixed(1)} | SMA20: ${sma ? sma.toFixed(5) : '—'} | Preço: ${price.toFixed(5)}`;
-
-  const stopOk = state.dailyProfit > -(CONFIG.balance * CONFIG.stopLossPct / 100);
-  if(direction && state.tradesToday < CONFIG.maxTrades && stopOk) {
-    startSimulation(direction);
-  }
-
-  strategyLoopTimeout = setTimeout(startStrategyLoop, 1500);
-}
-
-function startSimulation(direction) {
-  if(simulation.active) return;
-  simulation.active = true;
-  simulation.direction = direction;
-  simulation.startTime = Date.now();
-  simulation.priceAtStart = state.currentPrice;
-
-  document.getElementById('simulationPanel').classList.add('active');
-  const timerEl  = document.getElementById('simulationTimer');
-  const resultEl = document.getElementById('simulationResult');
-
-  simulation.timer = setInterval(() => {
-    const elapsed = (Date.now() - simulation.startTime) / 1000;
-    timerEl.textContent = `SIMULANDO ${direction}: ${Math.max(0, 1.5 - elapsed).toFixed(1)}s`;
-
-    if(elapsed >= 1.5) {
-      clearInterval(simulation.timer);
-      const priceChange = ((state.currentPrice - simulation.priceAtStart) / simulation.priceAtStart) * 100;
-      let score = 40;
-      if(direction === 'CALL' && priceChange >  0.01) score = 70;
-      if(direction === 'PUT'  && priceChange < -0.01) score = 70;
-
-      const approved = score >= CONFIG.minScore;
-      resultEl.innerHTML = `<span class="${approved ? 'simulation-good' : 'simulation-bad'}">Score: ${score}% — ${approved ? '✅ APROVADO' : '❌ REJEITADO'}</span>`;
-
-      setTimeout(() => {
-        document.getElementById('simulationPanel').classList.remove('active');
-        if(approved) requestTrade(direction);
-        else addLog(`Simulação rejeitou ${direction} (score ${score}%)`, 'warn');
-        simulation.active = false;
-      }, 800);
+    if(tradeType==='multiplier'){
+        const stopLossAmount = Math.abs(CONFIG.stopLoss);
+        const takeProfitAmount = CONFIG.takeProfit;
+        addLog(`Proposta MULTIPLIER ${direction} | Stake: ${stake.toFixed(2)} USD | SL: -${stopLossAmount.toFixed(2)} | TP: +${takeProfitAmount.toFixed(2)}`, 'info');
+        state.ws.send(JSON.stringify({
+            proposal:1, amount:stake, basis:'stake',
+            contract_type:direction==='CALL'?'MULTUP':'MULTDOWN',
+            currency:'USD', symbol:CONFIG.symbol, multiplier:CONFIG.multiplier,
+            limit_order:{ stop_loss:Number(stopLossAmount.toFixed(2)), take_profit:Number(takeProfitAmount.toFixed(2)) }
+        }));
+    } else {
+        addLog(`Proposta BINARY ${direction} | Stake: ${stake} USD | 5 Ticks`, 'info');
+        state.ws.send(JSON.stringify({
+            proposal:1, amount:stake, basis:'stake',
+            contract_type:direction==='CALL'?'CALL':'PUT',
+            currency:'USD', symbol:CONFIG.symbol, duration:5, duration_unit:'t'
+        }));
     }
-  }, 100);
 }
 
-// =============================================
-//  UI HELPERS
-// =============================================
-function updateUI() {
-  document.getElementById('balanceDisplay').textContent = CONFIG.balance.toFixed(2);
-  document.getElementById('tradesCount').textContent = `${state.tradesToday}/${CONFIG.maxTrades}`;
-  const total = state.wins + state.losses;
-  document.getElementById('winRate').textContent = total ? Math.round((state.wins/total)*100) + '%' : '0%';
-  document.getElementById('winCount').textContent = state.wins;
-  document.getElementById('lossCount').textContent = state.losses;
-
-  if(state.openContract && state.openContract.profit !== undefined) {
-    const p = state.openContract.profit;
-    document.getElementById('tradeProfit').textContent = (p >= 0 ? '+' : '') + p.toFixed(2) + ' USD';
-    document.getElementById('tradeProfit').className = p >= 0 ? 'positive' : 'negative';
-    document.getElementById('tradeProfitPct').textContent = '● POSIÇÃO ABERTA';
-  } else {
-    const p = state.lastProfit;
-    document.getElementById('tradeProfit').textContent = (p >= 0 ? '+' : '') + p.toFixed(2) + ' USD';
-    document.getElementById('tradeProfit').className = p >= 0 ? 'positive' : 'negative';
-    document.getElementById('tradeProfitPct').textContent = state.lastProfitPercent
-      ? `${state.lastProfitPercent.toFixed(2)}% do saldo`
-      : '—';
-  }
+function showMultiplierCloseButton(contractId, currentProfit){
+    const btn = document.getElementById('floatingSellBtn');
+    if(!btn) return;
+    btn.classList.add('show');
+    const sign = currentProfit>=0?'+':'';
+    btn.innerHTML = `<i class="fas fa-times-circle"></i> FECHAR ORDEM (${sign}${parseFloat(currentProfit||0).toFixed(2)} USD)`;
+    btn.onclick = () => sellMultiplierContract(contractId);
 }
 
-function updateBalance() {
-  const auto = document.getElementById('autoAdjust').checked;
-  let sPct, slPct, tpPct;
-  if(auto) {
-    if(CONFIG.symbol.startsWith('cry'))      { sPct=2;   slPct=10; tpPct=15; }
-    else if(CONFIG.symbol.startsWith('frx')) { sPct=1;   slPct=3;  tpPct=5;  }
-    else                                      { sPct=0.5; slPct=2;  tpPct=5;  }
-    document.getElementById('stakePct').value = sPct;
-    document.getElementById('slPct').value    = slPct;
-    document.getElementById('tpPct').value    = tpPct;
-  } else {
-    sPct  = parseFloat(document.getElementById('stakePct').value) || 1;
-    slPct = parseFloat(document.getElementById('slPct').value)    || 5;
-    tpPct = parseFloat(document.getElementById('tpPct').value)    || 10;
-  }
-  CONFIG.stakePct     = sPct;
-  CONFIG.stopLossPct  = slPct;
-  CONFIG.takeProfitPct = tpPct;
-  document.getElementById('dailyTarget').textContent = '+' + ((CONFIG.balance * tpPct) / 100).toFixed(2);
-  document.getElementById('dailyStop').textContent   =       ((CONFIG.balance * slPct) / 100).toFixed(2);
-  document.getElementById('balanceDisplay').textContent = CONFIG.balance.toFixed(2);
-}
-
-function updateSecurity() {
-  const level = parseInt(document.getElementById('securityLevel').value);
-  CONFIG.securityLevel = level;
-  document.getElementById('securityValue').textContent = level + '%';
-  const f = (level - 10) / 90;
-  CONFIG.rsiLow  = 40 - (20 * f);
-  CONFIG.rsiHigh = 60 + (20 * f);
-  document.getElementById('rsiRangeDisplay').textContent = `${Math.floor(CONFIG.rsiLow)}/${Math.floor(CONFIG.rsiHigh)}`;
-}
-
-function updateRisk() {
-  const risk = parseInt(document.getElementById('riskLevel').value);
-  CONFIG.riskLevel = risk;
-  document.getElementById('riskValue').textContent = risk + '%';
-  CONFIG.maxTrades = Math.floor((risk / 10) * 10);
-  CONFIG.minScore  = Math.max(10, 40 - (risk - 10) * 0.3);
-  document.getElementById('maxTradesDisplay').textContent = CONFIG.maxTrades;
-}
-
-function updateTradesTable() {
-  const tbody = document.querySelector('#tradesTable tbody');
-  tbody.innerHTML = '';
-  if(!state.trades.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center">Nenhum trade ainda</td></tr>';
-    return;
-  }
-  state.trades.slice(0, 10).forEach(t => {
-    const row = tbody.insertRow();
-    row.innerHTML = `<td>${t.time}</td><td>${t.direction}</td><td>${t.amount} USD</td>
-      <td class="${t.result==='WIN'?'positive':'negative'}">${t.result}</td>
-      <td class="${t.profit>=0?'positive':'negative'}">${t.profit>=0?'+':''}${t.profit.toFixed(2)}</td>`;
-  });
-}
-
-function initCharts() {
-  const baseOpts = (yLabel) => ({
-    responsive: true,
-    maintainAspectRatio: false,
-    animation: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: {
-        backgroundColor: 'rgba(10,10,10,0.85)',
-        titleColor: 'rgba(240,240,240,0.5)',
-        bodyColor: '#f0f0f0',
-        borderColor: 'rgba(255,255,255,0.1)',
-        borderWidth: 1
-      }
-    },
-    scales: {
-      x: {
-        grid: { color: 'rgba(255,255,255,0.04)' },
-        ticks: { color: 'rgba(240,240,240,0.3)', maxRotation: 0, maxTicksLimit: 5, font: { size: 10 } }
-      },
-      y: {
-        grid: { color: 'rgba(255,255,255,0.04)' },
-        ticks: { color: 'rgba(240,240,240,0.3)', font: { size: 10 } }
-      }
+function sellMultiplierContract(id){
+    if(state.ws && state.ws.readyState===1){
+        state.ws.send(JSON.stringify({ sell:id, price:0 }));
+        addLog(`Encerrando posição #${id}...`, 'warn');
+        const btn = document.getElementById('floatingSellBtn');
+        if(btn) btn.classList.remove('show');
     }
-  });
-
-  state.charts.price = new Chart(document.getElementById('priceChart').getContext('2d'), {
-    type: 'line',
-    data: {
-      labels: [],
-      datasets: [{
-        label: 'Preço', data: [],
-        borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.07)',
-        fill: true, tension: 0.35, pointRadius: 0, borderWidth: 1.5
-      }]
-    },
-    options: baseOpts('Preço')
-  });
-
-  state.charts.profit = new Chart(document.getElementById('profitChart').getContext('2d'), {
-    type: 'line',
-    data: {
-      labels: [],
-      datasets: [{
-        label: 'Lucro', data: [],
-        borderColor: '#34d399', backgroundColor: 'rgba(52,211,153,0.07)',
-        fill: true, tension: 0.35, pointRadius: 0, borderWidth: 1.5
-      }]
-    },
-    options: baseOpts('Lucro USD')
-  });
-}
-
-function updateCharts() {
-  if(!state.charts.price || !state.charts.profit) return;
-  const time = new Date().toLocaleTimeString('pt-BR').slice(0,5);
-  const MAX = 40;
-  const pc = state.charts.price;
-  pc.data.labels.push(time);
-  pc.data.datasets[0].data.push(state.currentPrice);
-  if(pc.data.labels.length > MAX) { pc.data.labels.shift(); pc.data.datasets[0].data.shift(); }
-  pc.update('none');
-
-  const pf = state.charts.profit;
-  pf.data.labels.push(time);
-  pf.data.datasets[0].data.push(state.dailyProfit);
-  if(pf.data.labels.length > MAX) { pf.data.labels.shift(); pf.data.datasets[0].data.shift(); }
-  pf.update('none');
 }
 
 // =============================================
-//  CONTROLES PÚBLICOS
+//  TRADE RESULT
 // =============================================
-window.saveDerivToken = () => {
-  const t = document.getElementById('derivTokenInput').value.trim();
-  if(!t) { addLog('Token vazio — não salvo', 'warn'); return; }
-  CONFIG.derivToken = t;
-  localStorage.setItem('derivToken', t);
-  addLog('Token salvo.', 'success');
-};
+function handleTradeResult(contract){
+    if(state.trades.find(t=>t.id===contract.contract_id)) return;
+    const profit = parseFloat(contract.profit);
+    const result = profit>=0?'WIN':'LOSS';
+    const baseBalance = state.balanceBeforeTrade||CONFIG.balance;
+    state.lastProfitPercent = baseBalance>0?(profit/baseBalance)*100:0;
+    addLog(`Lucro real: ${profit.toFixed(2)} USD (${state.lastProfitPercent.toFixed(2)}% de ${baseBalance.toFixed(2)})`, result==='WIN'?'success':'error');
 
-window.saveOpenAIKey = () => {
-  const k = document.getElementById('openaiTokenInput').value.trim();
-  if(k) { CONFIG.openaiKey = k; localStorage.setItem('openaiKey', k); addLog('OpenAI Key salva', 'success'); }
-};
+    const trade = {
+        id:contract.contract_id, time:new Date().toLocaleTimeString('pt-BR'),
+        direction:contract.contract_type, amount:contract.buy_price,
+        result, profit, symbol:CONFIG.symbol
+    };
+    state.trades.unshift(trade);
+    state.tradesToday++;
+    state.lastProfit = profit;
+    state.dailyProfit += profit;
+    if(result==='WIN'){ state.wins++; state.consecutiveLosses=0; }
+    else { state.losses++; state.consecutiveLosses++; }
+    updateUI(); updateTradesTable(); updateCharts();
+    addLog(`${result} | ${contract.contract_type} | ${profit.toFixed(2)} USD | Perdas consecutivas: ${state.consecutiveLosses}`, result==='WIN'?'success':'error');
+    checkDailyLimits();
+}
 
-window.startBot = () => {
-  if(state.botRunning) { addLog('Bot já está rodando', 'warn'); return; }
-  if(!CONFIG.derivToken) { addLog('Configure o token primeiro!', 'error'); return; }
-  state.botRunning = true;
-  setBotStatusText('CONECTANDO');
-  addLog('Iniciando bot...', 'info');
-  connectDerivWebSocket();
-};
-
-window.pauseBot = () => {
-  // Define botRunning=false ANTES de fechar o socket
-  // para que onclose nao tente reconectar
-  state.botRunning = false;
-  state.strategyActive = false;
-  if(strategyLoopTimeout) { clearTimeout(strategyLoopTimeout); strategyLoopTimeout = null; }
-  if(state.reconnectTimer) { clearTimeout(state.reconnectTimer); state.reconnectTimer = null; }
-  setBotStatusText('PAUSADO');
-  setDotStatus('derivStatus', 'paused');
-  updateConnectionBar('error', 'Bot pausado');
-  addLog('Bot pausado', 'warn');
-  // Mantem websocket aberto para poder ver ticks, so para a estrategia
-};
-
-window.stopBot = () => {
-  // Define botRunning=false ANTES de fechar — onclose nao reconecta
-  state.botRunning = false;
-  state.strategyActive = false;
-  if(strategyLoopTimeout) { clearTimeout(strategyLoopTimeout); strategyLoopTimeout = null; }
-  if(state.reconnectTimer) { clearTimeout(state.reconnectTimer); state.reconnectTimer = null; }
-  setBotStatusText('OFFLINE');
-  setDotStatus('derivStatus', 'offline');
-  setDotStatus('derivStatusDot', 'offline');
-  updateConnectionBar('error', 'Bot parado');
-  addLog('Bot parado', 'info');
-  if(state.ws) state.ws.close(1000, 'Parado pelo usuario');
-};
-
-window.manualTrade = (dir) => {
-  if(!state.botRunning || !state.authorized) {
-    addLog('Inicie o bot e aguarde a conexão antes de operar manualmente', 'error');
-    return;
-  }
-  addLog(`Trade manual: ${dir}`, 'info');
-  startSimulation(dir);
-};
-
-window.resetDaily = () => {
-  state.dailyProfit = 0; state.tradesToday = 0;
-  state.wins = 0; state.losses = 0;
-  state.trades = []; state.consecutiveLosses = 0;
-  state.lastProfit = 0; state.lastProfitPercent = 0;
-  updateUI(); updateTradesTable();
-  addLog('Estatísticas diárias resetadas', 'info');
-};
-
-window.sellMultiplierContract = sellMultiplierContract;
+function updatePrice(price){
+    state.currentPrice = price;
+    state.priceHistory.push(price);
+    if(state.priceHistory.length>100) state.priceHistory.shift();
+    document.getElementById('currentPrice').textContent = price.toFixed(5);
+    updateCharts();
+}
 
 // =============================================
-//  EVENT LISTENERS
+//  ANÁLISE DE SEGURANÇA + SIMULAÇÃO
 // =============================================
-document.getElementById('securityLevel').addEventListener('input', updateSecurity);
-document.getElementById('riskLevel').addEventListener('input', updateRisk);
-document.getElementById('autoAdjust').addEventListener('change', updateBalance);
-document.getElementById('assetSelector').addEventListener('change', (e) => {
-  CONFIG.symbol = e.target.value;
-  updateBalance();
-  // Se conectado, re-subscreve no novo ativo
-  if(state.wsConnected && state.authorized) {
-    addLog(`Trocando ativo para ${CONFIG.symbol}`, 'info');
-    subscribeTicks();
-  }
-});
-['stakePct','slPct','tpPct'].forEach(id =>
-  document.getElementById(id).addEventListener('input', () => {
-    document.getElementById('autoAdjust').checked = false;
+function runSecurityAnalysis(direction){
+    const panel = document.getElementById('simulationPanel');
+    const resultEl = document.getElementById('simulationResult');
+    const timerEl = document.getElementById('simulationTimer');
+    panel.classList.add('simulation-active');
+    resultEl.style.display='none';
+    let timeRemaining = 1.5;
+    timerEl.textContent = `ANALISANDO: ${timeRemaining.toFixed(1)}s`;
+    const tickInterval = setInterval(() => {
+        timeRemaining -= 0.3;
+        timerEl.textContent = `ANALISANDO: ${Math.max(0,timeRemaining).toFixed(1)}s`;
+        if(timeRemaining<=0){
+            clearInterval(tickInterval);
+            const analyses = performSecurityChecks();
+            displaySecurityResults(analyses, direction, resultEl);
+            if(analyses.allChecksPassed){
+                setTimeout(() => { addLog(`✅ Verificações passaram! Executando ${direction}...`, 'success'); requestTrade(direction); }, 300);
+            } else { addLog(`⚠️ Análise detectou risco. Trade bloqueado.`, 'warn'); }
+            setTimeout(() => { panel.classList.remove('simulation-active'); }, 2000);
+        }
+    }, 300);
+}
+
+function startTradeWithSimulation(direction, isManual=false){
+    if(!state.botRunning||simulation.active) return;
+    if(state.tradesToday>=CONFIG.maxTrades){ addLog('Limite diário atingido.', 'warn'); return; }
+    if(state.lastProfit<=CONFIG.stopLoss){ checkDailyLimits(); return; }
+    simulation.active=true; simulation.direction=direction;
+    simulation.startTime=Date.now(); simulation.priceData=[];
+    simulation.predictionScore=0; simulation.priceAtStart=state.currentPrice;
+    simulation.lastPrediction=null;
+    const panel = document.getElementById('simulationPanel');
+    const resultEl = document.getElementById('simulationResult');
+    panel.classList.add('simulation-active');
+    resultEl.className='simulation-result'; resultEl.textContent='';
+    simulation.timer = setInterval(updateSimulation, 100);
+    addLog(`🔍 SIMULAÇÃO: ${direction} (${isManual?'Manual':'Automático'})`, 'simulation');
+}
+
+function updateSimulation(){
+    if(!simulation.active) return;
+    const elapsed = (Date.now()-simulation.startTime)/1000;
+    const remaining = Math.max(0,simulation.duration-elapsed);
+    document.getElementById('simulationTimer').textContent = `SIMULANDO ${simulation.direction}: ${remaining.toFixed(1)}s`;
+    if(elapsed>=simulation.duration) finalizeSimulation();
+}
+
+function finalizeSimulation(){
+    if(simulation.timer) clearInterval(simulation.timer);
+    const priceChange = ((state.currentPrice-simulation.priceAtStart)/simulation.priceAtStart)*100;
+    simulation.predictionScore = 40;
+    if(simulation.direction==='CALL'&&priceChange>0.01) simulation.predictionScore=70;
+    if(simulation.direction==='PUT'&&priceChange<-0.01) simulation.predictionScore=70;
+    const shouldExecute = simulation.predictionScore>=(CONFIG.minScore||25);
+    const resultEl = document.getElementById('simulationResult');
+    resultEl.textContent = shouldExecute
+        ? `✅ APROVADO: Score ${simulation.predictionScore}% — Executando ${simulation.direction}...`
+        : `❌ REJEITADO: Score muito baixo (${simulation.predictionScore}%)`;
+    resultEl.className = `simulation-result ${shouldExecute?'simulation-good':'simulation-bad'}`;
+    resultEl.style.display='block';
+    addLog(`SIMULAÇÃO: ${simulation.direction} | Score: ${simulation.predictionScore}% | Variação: ${priceChange.toFixed(3)}%`, 'simulation');
+    setTimeout(() => {
+        document.getElementById('simulationPanel').classList.remove('simulation-active');
+        if(shouldExecute){ addLog(`✅ Executando ordem REAL de ${simulation.direction}`, 'success'); requestTrade(simulation.direction); }
+        else addLog(`❌ Ordem rejeitada (score ${simulation.predictionScore}%)`, 'warn');
+        simulation.active=false; simulation.direction=null;
+    }, 2000);
+}
+
+function stopSimulation(){
+    if(simulation.timer) clearInterval(simulation.timer);
+    document.getElementById('simulationPanel').classList.remove('simulation-active');
+    document.getElementById('simulationTimer').textContent='ANALISANDO: 0s';
+    simulation.active=false;
+    addLog('Simulação cancelada.', 'warn');
+}
+
+// =============================================
+//  INDICADORES TÉCNICOS
+// =============================================
+function calculateRSI(prices, period=14){
+    if(prices.length<period+1) return 50;
+    let gains=0, losses=0;
+    for(let i=prices.length-period;i<prices.length;i++){
+        const ch=prices[i]-prices[i-1];
+        if(ch>=0) gains+=ch; else losses+=Math.abs(ch);
+    }
+    const avgGain=gains/period, avgLoss=losses/period;
+    if(avgLoss===0) return 100;
+    return 100-(100/(1+avgGain/avgLoss));
+}
+function calculateVolatility(prices){
+    if(prices.length<2) return 0;
+    const mean=prices.reduce((a,b)=>a+b,0)/prices.length;
+    const variance=prices.reduce((a,b)=>a+Math.pow(b-mean,2),0)/prices.length;
+    return Math.sqrt(variance)/mean;
+}
+function calculateSMA(prices, period){
+    if(prices.length<period) return null;
+    return prices.slice(-period).reduce((a,b)=>a+b,0)/period;
+}
+function calculateEMA(prices, period){
+    if(prices.length<period) return null;
+    const multiplier=2/(period+1);
+    let ema=prices.slice(0,period).reduce((a,b)=>a+b,0)/period;
+    for(let i=period;i<prices.length;i++) ema=(prices[i]-ema)*multiplier+ema;
+    return ema;
+}
+function calculateMACD(prices){
+    if(prices.length<25) return {macd:0,signal:0,histogram:0};
+    const ema12=calculateEMA(prices,12), ema26=calculateEMA(prices,26);
+    if(ema12===null||ema26===null) return {macd:0,signal:0,histogram:0};
+    const macd=ema12-ema26;
+    const macdHistory=[];
+    for(let i=25;i<prices.length;i++){
+        const sl=prices.slice(0,i+1);
+        const e12=calculateEMA(sl,12), e26=calculateEMA(sl,26);
+        if(e12!==null&&e26!==null) macdHistory.push(e12-e26);
+    }
+    if(macdHistory.length<9) return {macd,signal:0,histogram:0};
+    const signal=calculateEMA(macdHistory,9);
+    if(signal===null) return {macd,signal:0,histogram:0};
+    return {macd,signal,histogram:macd-signal};
+}
+function calculateBollingerBands(prices, period=20, mult=2){
+    if(prices.length<period) return null;
+    const sma=calculateSMA(prices,period);
+    const slice=prices.slice(-period);
+    const variance=slice.reduce((s,p)=>s+Math.pow(p-sma,2),0)/period;
+    const stdDev=Math.sqrt(variance);
+    return {upper:sma+(mult*stdDev),middle:sma,lower:sma-(mult*stdDev)};
+}
+
+// =============================================
+//  SECURITY CHECKS
+// =============================================
+function performSecurityChecks(){
+    const checks={
+        rsiCheck:{passed:true,reason:'OK',value:0},
+        volatilityCheck:{passed:true,reason:'OK',value:0},
+        bollingerCheck:{passed:true,reason:'OK',value:0},
+        smaCheck:{passed:true,reason:'OK',value:0},
+        macdCheck:{passed:true,reason:'OK',value:0},
+        priceHistoryCheck:{passed:false,reason:'Dados insuficientes',value:0},
+        dailyLimitCheck:{passed:true,reason:'OK',value:0},
+        winRateCheck:{passed:true,reason:'OK',value:0},
+        consecutiveLossCheck:{passed:true,reason:'OK',value:0},
+        balanceCheck:{passed:true,reason:'OK',value:0},
+        allChecksPassed:false
+    };
+    if(state.priceHistory.length<25){ checks.allChecksPassed=false; return checks; }
+    checks.priceHistoryCheck={passed:true,reason:`${state.priceHistory.length} candles`,value:state.priceHistory.length};
+    const rsi=calculateRSI(state.priceHistory,14);
+    checks.rsiCheck.value=rsi.toFixed(2);
+    checks.rsiCheck.passed=(rsi>CONFIG.rsiLow&&rsi<CONFIG.rsiHigh);
+    checks.rsiCheck.reason=`RSI: ${rsi.toFixed(2)} (${checks.rsiCheck.passed?'Normal':'Extremo'})`;
+    const vol=calculateVolatility(state.priceHistory.slice(-20));
+    checks.volatilityCheck.value=(vol*10000).toFixed(4);
+    checks.volatilityCheck.passed=vol<0.001;
+    checks.volatilityCheck.reason=`Vol: ${(vol*10000).toFixed(4)}% (${checks.volatilityCheck.passed?'Baixa':'Alta'})`;
+    const bb=calculateBollingerBands(state.priceHistory,20);
+    checks.bollingerCheck.value=bb?'Dentro':'Fora';
+    checks.bollingerCheck.passed=!!(bb&&state.currentPrice>bb.lower&&state.currentPrice<bb.upper);
+    checks.bollingerCheck.reason=`Preço ${checks.bollingerCheck.passed?'dentro':'fora'} das bandas`;
+    const sma20=calculateSMA(state.priceHistory,20);
+    checks.smaCheck.value=sma20?sma20.toFixed(5):'N/A';
+    checks.smaCheck.passed=!!sma20;
+    if(sma20) checks.smaCheck.reason=`${state.currentPrice>sma20?'Acima':'Abaixo'} de SMA20`;
+    const macd=calculateMACD(state.priceHistory);
+    checks.macdCheck.value=macd.histogram.toFixed(6);
+    checks.macdCheck.passed=!isNaN(macd.histogram);
+    checks.macdCheck.reason=`MACD: ${macd.histogram>0?'Positivo':'Negativo'}`;
+    checks.dailyLimitCheck.passed=state.tradesToday<CONFIG.maxTrades;
+    checks.dailyLimitCheck.reason=`${state.tradesToday}/${CONFIG.maxTrades} trades`;
+    checks.dailyLimitCheck.value=`${state.tradesToday}/${CONFIG.maxTrades}`;
+    const total=state.wins+state.losses;
+    if(total>=5){ const wr=(state.wins/total)*100; checks.winRateCheck.passed=wr>=55; checks.winRateCheck.reason=`Win Rate: ${wr.toFixed(1)}%`; }
+    else { checks.winRateCheck.passed=true; checks.winRateCheck.reason='Histórico < 5 trades'; }
+    checks.consecutiveLossCheck.passed=state.consecutiveLosses<3;
+    checks.consecutiveLossCheck.reason=`${state.consecutiveLosses} perdas consecutivas`;
+    checks.balanceCheck.passed=state.lastProfit>CONFIG.stopLoss&&state.lastProfit<CONFIG.takeProfit;
+    checks.balanceCheck.reason=`Lucro: ${state.lastProfit.toFixed(2)}`;
+    checks.allChecksPassed=Object.keys(checks).filter(k=>k!=='allChecksPassed').every(k=>checks[k].passed);
+    return checks;
+}
+
+function displaySecurityResults(analyses, direction, resultEl){
+    const items=[
+        {key:'priceHistoryCheck',label:'Histórico de Preços'},
+        {key:'rsiCheck',label:'RSI'},
+        {key:'volatilityCheck',label:'Volatilidade'},
+        {key:'bollingerCheck',label:'Bandas de Bollinger'},
+        {key:'smaCheck',label:'SMA 20'},
+        {key:'macdCheck',label:'MACD'},
+        {key:'dailyLimitCheck',label:'Limite Diário'},
+        {key:'winRateCheck',label:'Win Rate'},
+        {key:'consecutiveLossCheck',label:'Perdas Recursivas'},
+        {key:'balanceCheck',label:'Lucro/Perda'}
+    ];
+    let html='<div style="font-size:11px;line-height:1.7;margin-top:8px">';
+    items.forEach(item=>{
+        const c=analyses[item.key];
+        const color=c.passed?'#7fff7f':'#ff9090';
+        html+=`<div style="color:${color}">${c.passed?'✅':'❌'} ${item.label}: ${c.reason}</div>`;
+    });
+    html+='</div>';
+    const header=analyses.allChecksPassed
+        ? `<div class="simulation-good">✅ ÁREA VERDE — Executando ${direction}...</div>`
+        : `<div class="simulation-bad">⚠️ CONDIÇÕES NÃO IDEAIS — Trade bloqueado</div>`;
+    resultEl.innerHTML = header + html;
+    resultEl.style.display='block';
+}
+
+// =============================================
+//  ESTRATÉGIA DE TRADING
+// =============================================
+function startTradingStrategy(){
+    if(!state.botRunning||state.strategyActive) return;
+    state.strategyActive=true;
+    if(state.openContract){ setTimeout(startTradingStrategy, 1000); return; }
+    if(!state.isViable){ addLog('Mercado não viável. Bot pausado.', 'warn'); pauseBot(); return; }
+    const totalTrades=state.wins+state.losses;
+    if(totalTrades>=10){
+        const wr=(state.wins/totalTrades)*100;
+        if(wr<60){
+            if(!state.isWaitingForRecovery){ state.isWaitingForRecovery=true; addLog(`Win rate ${wr.toFixed(1)}% < 60%. Aguardando recuperação...`, 'warn'); }
+            state.strategyActive=false; setTimeout(startTradingStrategy,1000); return;
+        } else if(state.isWaitingForRecovery){ state.isWaitingForRecovery=false; addLog(`Win rate recuperado: ${wr.toFixed(1)}%.`, 'info'); }
+    }
+    if(state.priceHistory.length<25){ state.strategyActive=false; setTimeout(startTradingStrategy,1000); return; }
+    const rsi=calculateRSI(state.priceHistory,14);
+    const sma20=calculateSMA(state.priceHistory,20);
+    const macd=calculateMACD(state.priceHistory);
+    const bb=calculateBollingerBands(state.priceHistory,20);
+    const vol=calculateVolatility(state.priceHistory.slice(-20));
+    document.getElementById('aiDecision').textContent = '— Analisando —';
+    document.getElementById('aiReason').textContent = `RSI: ${rsi.toFixed(1)} | SMA: ${sma20?sma20.toFixed(5):'—'} | Vol: ${(vol*10000).toFixed(3)}%`;
+    if(state.tradesToday>=CONFIG.maxTrades){ addLog('Limite diário atingido.', 'info'); pauseBot(); return; }
+    if(state.lastProfit<=CONFIG.stopLoss){ checkDailyLimits(); return; }
+    if(state.dailyProfit>=CONFIG.takeProfit){ addLog('Take profit diário atingido.', 'info'); pauseBot(); return; }
+    if(state.consecutiveLosses>=5){ addLog('5 perdas consecutivas. Bot pausado.', 'error'); pauseBot(); return; }
+    if(vol>=0.001){ state.strategyActive=false; setTimeout(startTradingStrategy,1000); return; }
+    if(!bb||state.currentPrice<=bb.lower||state.currentPrice>=bb.upper){ state.strategyActive=false; setTimeout(startTradingStrategy,1000); return; }
+    let dir=null;
+    if(rsi<30&&sma20!==null&&state.currentPrice>sma20&&!isNaN(macd.histogram)&&macd.histogram>0) dir='CALL';
+    else if(rsi>70&&sma20!==null&&state.currentPrice<sma20&&!isNaN(macd.histogram)&&macd.histogram<0) dir='PUT';
+    if(dir){
+        document.getElementById('aiDecision').textContent = `→ SINAL: ${dir}`;
+        addLog(`CONDIÇÕES PERFEITAS para ${dir}: RSI=${rsi.toFixed(2)}, Vol OK, Bollinger OK`, 'success');
+        startTradeWithSimulation(dir);
+    }
+    state.strategyActive=false;
+    setTimeout(startTradingStrategy,1000);
+}
+
+// =============================================
+//  DAILY LIMITS
+// =============================================
+function checkDailyLimits(){
+    if(state.lastProfit<=CONFIG.stopLoss){
+        addLog(`STOP LOSS POR TRADE ATINGIDO (${CONFIG.stopLoss.toFixed(2)})! Bot desconectado.`, 'error');
+        stopBot();
+        return;
+    }
+    if(state.tradesToday>=CONFIG.maxTrades){ addLog('Limite diário de trades atingido.', 'warn'); pauseBot(); }
+}
+
+// =============================================
+//  UI UPDATE
+// =============================================
+function updateUI(){
+    const profitTitle=document.getElementById('profitCardTitle');
+    const profitEl=document.getElementById('tradeProfit');
+    const pctEl=document.getElementById('tradeProfitPct');
+    const profitInfoEl=document.getElementById('profitInfo');
+    if(state.openContract){
+        const lp=state.openContract.profit||0;
+        profitTitle.textContent='P/L EM ABERTO';
+        profitEl.textContent=(lp>=0?'+':'')+lp.toFixed(2)+' USD';
+        profitEl.className=lp>=0?'dash-card-value positive':'dash-card-value negative';
+        pctEl.textContent='● POSIÇÃO ABERTA';
+        if(profitInfoEl) profitInfoEl.style.display='none';
+    } else {
+        profitTitle.textContent='Lucro Último Trade';
+        profitEl.textContent=(state.lastProfit>=0?'+':'')+state.lastProfit.toFixed(2)+' USD';
+        profitEl.className=state.lastProfit>=0?'dash-card-value positive':'dash-card-value negative';
+        pctEl.textContent=state.lastProfitPercent?state.lastProfitPercent.toFixed(2)+'% do saldo':'—';
+        if(profitInfoEl) profitInfoEl.style.display='block';
+    }
+    document.getElementById('tradesCount').textContent=`${state.tradesToday}/${CONFIG.maxTrades}`;
+    const total=state.wins+state.losses;
+    const wr=total>0?Math.round((state.wins/total)*100):0;
+    document.getElementById('winRate').textContent=wr+'%';
+    document.getElementById('winCount').textContent=state.wins;
+    document.getElementById('lossCount').textContent=state.losses;
+}
+
+function updateTradesTable(){
+    const tbody=document.getElementById('tradesTable');
+    tbody.innerHTML='';
+    if(!state.trades.length){
+        tbody.innerHTML='<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text3)">Nenhum trade ainda</td></tr>';
+        return;
+    }
+    state.trades.slice(0,10).forEach(t=>{
+        const isCall=t.direction==='CALL'||t.direction==='MULTUP'||t.direction==='RISE';
+        const row=tbody.insertRow();
+        row.innerHTML=`<td>${t.time}</td>
+            <td style="color:${isCall?'#7fff7f':'#ff9090'};font-weight:700">${t.direction}</td>
+            <td>${parseFloat(t.amount||0).toFixed(2)} USD</td>
+            <td class="${t.result==='WIN'?'positive':'negative'}">${t.result}</td>
+            <td class="${t.profit>=0?'positive':'negative'}">${t.profit>=0?'+':''}${t.profit.toFixed(2)}</td>`;
+    });
+}
+
+// =============================================
+//  GRÁFICOS
+// =============================================
+function initCharts(){
+    const baseOpts=(yLabel)=>({
+        responsive:true, maintainAspectRatio:false, animation:false,
+        plugins:{ legend:{display:false}, tooltip:{backgroundColor:'rgba(10,10,10,0.85)',titleColor:'rgba(240,240,240,0.5)',bodyColor:'#f0f0f0',borderColor:'rgba(255,255,255,0.1)',borderWidth:1} },
+        scales:{
+            x:{ grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'rgba(240,240,240,0.3)',maxRotation:0,maxTicksLimit:5,font:{size:10}} },
+            y:{ grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'rgba(240,240,240,0.3)',font:{size:10}} }
+        }
+    });
+    state.charts.profit=new Chart(document.getElementById('profitChart').getContext('2d'),{
+        type:'line', data:{ labels:[], datasets:[{ label:'Lucro', data:[], borderColor:'#34d399', backgroundColor:'rgba(52,211,153,0.07)', fill:true, tension:0.35, pointRadius:0, borderWidth:1.5 }] },
+        options:baseOpts('Lucro USD')
+    });
+    state.charts.price=new Chart(document.getElementById('priceChart').getContext('2d'),{
+        type:'line', data:{ labels:[], datasets:[{ label:'Preço', data:[], borderColor:'#60a5fa', backgroundColor:'rgba(96,165,250,0.07)', fill:true, tension:0.35, pointRadius:0, borderWidth:1.5 }] },
+        options:baseOpts('Preço')
+    });
+}
+
+function updateCharts(){
+    if(!state.charts.profit||!state.charts.price) return;
+    const time=new Date().toLocaleTimeString('pt-BR').slice(0,5);
+    const MAX=40;
+    const pf=state.charts.profit;
+    pf.data.labels.push(time); pf.data.datasets[0].data.push(state.lastProfit);
+    if(pf.data.labels.length>MAX){ pf.data.labels.shift(); pf.data.datasets[0].data.shift(); }
+    pf.update('none');
+    const pc=state.charts.price;
+    pc.data.labels.push(time); pc.data.datasets[0].data.push(state.currentPrice);
+    if(pc.data.labels.length>MAX){ pc.data.labels.shift(); pc.data.datasets[0].data.shift(); }
+    pc.update('none');
+}
+
+// =============================================
+//  STORAGE
+// =============================================
+function saveToStorage(){
+    try {
+        const data={ dailyProfit:state.dailyProfit, tradesToday:state.tradesToday, wins:state.wins, losses:state.losses, trades:state.trades.slice(0,50), consecutiveLosses:state.consecutiveLosses, isWaitingForRecovery:state.isWaitingForRecovery, isViable:state.isViable, lastUpdate:new Date().toISOString() };
+        localStorage.setItem('derivBotData', JSON.stringify(data));
+        if(typeof db!=='undefined'){
+            const userId=(CONFIG.derivToken||'sessao_anonima').replace(/[.#$[\]]/g,'_');
+            db.ref('bot_sessions/'+userId).set(data);
+        }
+    } catch(e){ console.warn('Não foi possível salvar:', e); }
+}
+
+function loadFromStorage(){
+    try {
+        const saved=localStorage.getItem('derivBotData');
+        if(!saved) return;
+        const data=JSON.parse(saved);
+        state.dailyProfit=data.dailyProfit||0; state.tradesToday=data.tradesToday||0;
+        state.wins=data.wins||0; state.losses=data.losses||0; state.trades=data.trades||[];
+        state.consecutiveLosses=data.consecutiveLosses||0;
+        state.isWaitingForRecovery=data.isWaitingForRecovery||false;
+        state.isViable=data.isViable||false;
+        const lastDate=new Date(data.lastUpdate), today=new Date();
+        if(lastDate.getDate()!==today.getDate()||lastDate.getMonth()!==today.getMonth()||lastDate.getFullYear()!==today.getFullYear()){
+            state.dailyProfit=0; state.tradesToday=0; state.wins=0; state.losses=0;
+            state.consecutiveLosses=0; state.isWaitingForRecovery=false;
+            addLog('Novo dia detectado. Estatísticas resetadas.', 'info');
+        } else { addLog('Dados anteriores carregados.', 'info'); }
+        updateUI(); updateTradesTable();
+    } catch(e){ console.warn('Não foi possível carregar:', e); }
+}
+
+// =============================================
+//  IA OPENAI
+// =============================================
+async function consultAI(direction, prices){
+    if(!CONFIG.openaiKey) return { approved:true, reason:"IA desativada (sem chave)" };
+    addLog(`Consultando IA para confirmar ${direction}...`, 'info');
+    const recentPrices=prices.slice(-30).join(', ');
+    const prompt=`Analise estes preços recentes do ativo ${CONFIG.symbol}: [${recentPrices}]. A tendência sugere um movimento de ${direction}? Responda apenas com JSON: {"approved": true/false, "confidence": 0-100, "reason": "curta justificativa"}`;
+    try {
+        const res=await fetch('https://api.openai.com/v1/chat/completions',{
+            method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${CONFIG.openaiKey}`},
+            body:JSON.stringify({ model:"gpt-4o-mini", messages:[{role:"user",content:prompt}], temperature:0.2 })
+        });
+        const data=await res.json();
+        const result=JSON.parse(data.choices[0].message.content.replace(/```json|```/g,''));
+        const color=result.approved?'#7fff7f':'#ff9090';
+        document.getElementById('aiDecision').innerHTML=`<span style="color:${color}">${result.approved?'✅':'❌'} ${direction} ${result.approved?'APROVADO':'REJEITADO'}</span>`;
+        document.getElementById('aiReason').innerHTML=`Confiança: <strong>${result.confidence}%</strong><br>${result.reason}`;
+        return result;
+    } catch(e){ addLog('Erro IA: '+e.message, 'error'); return {approved:true,reason:'Erro na IA, seguindo estratégia padrão'}; }
+}
+
+// =============================================
+//  INIT
+// =============================================
+document.addEventListener('DOMContentLoaded', function(){
+    initCharts();
+    updateTime();
+    loadFromStorage();
     updateBalance();
-  })
-);
+    updateSecurity();
+    updateRisk();
+    checkRiskAlert();
 
-// =============================================
-//  INICIALIZAÇÃO
-// =============================================
-const savedToken = localStorage.getItem('derivToken');
-if(savedToken) { CONFIG.derivToken = savedToken; document.getElementById('derivTokenInput').value = savedToken; }
+    const savedToken=localStorage.getItem('userDerivToken');
+    if(savedToken){ CONFIG.derivToken=savedToken; document.getElementById('derivTokenInput').value=savedToken; }
+    const savedAI=localStorage.getItem('userOpenAIKey');
+    if(savedAI){ CONFIG.openaiKey=savedAI; document.getElementById('openaiTokenInput').value=savedAI; }
 
-const savedKey = localStorage.getItem('openaiKey');
-if(savedKey) { CONFIG.openaiKey = savedKey; document.getElementById('openaiTokenInput').value = savedKey; }
+    document.getElementById('securityLevel').addEventListener('input', updateSecurity);
+    document.getElementById('riskLevel').addEventListener('input', updateRisk);
+    document.getElementById('autoAdjust').addEventListener('change', updateBalance);
+    ['stakePct','slPct','tpPct'].forEach(id=>{
+        document.getElementById(id).addEventListener('input',()=>{ document.getElementById('autoAdjust').checked=false; updateBalance(); });
+    });
+    document.getElementById('assetSelector').addEventListener('change',function(){
+        const val=this.value;
+        if(val==='MULTI_CRYPTO'){
+            state.isCycling=true;
+            document.getElementById('multiCryptoConfig').style.display='block';
+            CONFIG.cryptoList=document.getElementById('cryptoListInput').value.split(',').map(s=>s.trim());
+            CONFIG.symbol=CONFIG.cryptoList[0];
+        } else {
+            state.isCycling=false;
+            document.getElementById('multiCryptoConfig').style.display='none';
+            CONFIG.symbol=val;
+        }
+        updateBalance();
+    });
 
-setInterval(() => { document.getElementById('currentTime').textContent = new Date().toLocaleTimeString('pt-BR'); }, 1000);
+    setInterval(updateTime, 1000);
+    setInterval(saveToStorage, 10000);
+    addLog('Sistema OCTOCOOKIE pronto. Configure o token Deriv e clique em INICIAR.', 'success');
+    addLog('Dica: use uma conta Demo para testes sem risco.', 'info');
 
-initCharts();
-updateBalance();
-updateSecurity();
-updateRisk();
-addLog('Sistema pronto. Configure o token Deriv e clique em INICIAR.', 'success');
-addLog('Dica: use uma conta Demo para testar sem risco.', 'info');
+    // TERMS
+    const termsPopup=document.getElementById('termsPopup');
+    const closeTermsBtn=document.getElementById('closeTermsBtn');
+    const acceptTermsBtn=document.getElementById('acceptTermsBtn');
+    function closeTerms(){ if(termsPopup){ termsPopup.style.display='none'; document.body.style.overflow=''; } }
+    if(closeTermsBtn) closeTermsBtn.addEventListener('click', closeTerms);
+    if(acceptTermsBtn) acceptTermsBtn.addEventListener('click',()=>{ try{ localStorage.setItem('termsAccepted','1'); }catch(e){} closeTerms(); });
+    if(termsPopup) termsPopup.addEventListener('click',e=>{ if(e.target===termsPopup) closeTerms(); });
+    document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeTerms(); });
+    try {
+        if(!localStorage.getItem('termsAccepted')) setTimeout(()=>{ if(termsPopup) termsPopup.style.display='flex'; }, 300);
+    } catch(e){ if(termsPopup) termsPopup.style.display='flex'; }
+});
+
+function updateTime(){ document.getElementById('currentTime').textContent=new Date().toLocaleTimeString('pt-BR'); }
 </script>
 </body>
 </html>
-HTMLEOF
-echo "Done: $(wc -c < /mnt/user-data/outputs/octocookie_fixed.html) bytes"
