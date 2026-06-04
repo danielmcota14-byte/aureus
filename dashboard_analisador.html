@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OCTOCOOKIE · Dashboard + Analisador</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#060606;--bg2:#0e0e0e;--bg3:#161616;--bg4:#1f1f1f;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.15);
+  --text:#f0f0f0;--text2:#888;--text3:#444;
+  --green:#7fff7f;--red:#ff9090;--yellow:#ffe77f;
+  --blue:#60a5fa;--purple:#c084fc;--orange:#fb923c;
+  --mono:'Space Mono',monospace;--head:'Syne',sans-serif;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px}
+body{display:flex;flex-direction:column;min-height:100vh}
+
+/* TOP NAV */
+.topnav{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;
+  border-bottom:1px solid var(--border);background:var(--bg2);position:sticky;top:0;z-index:100}
+.brand{font-family:var(--head);font-size:20px;font-weight:800;letter-spacing:.1em}
+.brand span{color:var(--green)}
+.nav-right{display:flex;align-items:center;gap:16px;font-size:11px;color:var(--text2)}
+#clockEl{font-variant-numeric:tabular-nums}
+
+/* MAIN GRID */
+.main{flex:1;padding:20px 24px;display:grid;
+  grid-template-columns:1fr 1fr 1fr;gap:14px;align-items:start}
+@media(max-width:900px){.main{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.main{grid-template-columns:1fr}}
+
+/* CARDS */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:18px;
+  transition:border-color .2s}
+.card:hover{border-color:var(--border2)}
+.card-title{font-size:10px;font-weight:700;letter-spacing:.12em;color:var(--text2);
+  text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.card-title::before{content:'';width:3px;height:14px;border-radius:2px;background:currentColor;opacity:.5}
+
+/* SIGNAL CARD */
+.signal-card{grid-column:1/3}
+.signal-big{font-family:var(--head);font-size:48px;font-weight:800;letter-spacing:.04em;
+  line-height:1;margin-bottom:8px;transition:color .3s,text-shadow .3s}
+.signal-big.flash{text-shadow:0 0 40px currentColor}
+.signal-score{font-size:14px;color:var(--text2);margin-bottom:4px}
+.signal-sub{font-size:11px;color:var(--text3)}
+.reasons-box{margin-top:14px;background:rgba(0,0,0,.35);border:1px solid var(--border);
+  border-radius:10px;padding:10px 12px;max-height:140px;overflow-y:auto;
+  font-size:11px;line-height:1.6;scrollbar-width:thin;scrollbar-color:var(--text3) transparent}
+.r-good{color:var(--green)} .r-warn{color:var(--yellow)} .r-neutral{color:var(--text2)}
+
+/* STATUS CARD */
+.status-card{grid-column:3/4}
+
+/* METRIC ROWS */
+.metric-row{display:flex;justify-content:space-between;align-items:center;
+  padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.metric-row:last-child{border-bottom:none}
+.metric-label{color:var(--text2);font-size:11px}
+.metric-val{font-weight:700;font-size:13px}
+
+/* COUNTERS */
+.counter-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:4px}
+.counter-box{background:var(--bg3);border:1px solid var(--border);border-radius:10px;
+  padding:12px;text-align:center}
+.counter-num{font-family:var(--head);font-size:28px;font-weight:800}
+.counter-label{font-size:10px;color:var(--text2);margin-top:2px;
+  text-transform:uppercase;letter-spacing:.1em}
+
+/* INDICATOR TABLE */
+.ind-table{width:100%;border-collapse:collapse;font-size:12px}
+.ind-table td{padding:7px 6px;border-bottom:1px solid rgba(255,255,255,.04)}
+.ind-table tr:last-child td{border:none}
+.ind-table .lbl{color:var(--text2);width:50%}
+.ind-table .val{font-weight:700;text-align:right}
+
+/* LATENCY BARS */
+.lat-bars{display:flex;align-items:flex-end;gap:2px;height:50px;margin-top:8px}
+.lat-bar{flex:1;border-radius:2px 2px 0 0;min-width:3px;transition:height .3s}
+
+/* CMD LOG */
+.cmd-log{background:rgba(0,0,0,.4);border:1px solid var(--border);border-radius:10px;
+  padding:12px;max-height:200px;overflow-y:auto;font-size:11px;
+  scrollbar-width:thin;scrollbar-color:var(--text3) transparent}
+.log-row{padding:3px 0;border-bottom:1px solid rgba(255,255,255,.03);display:flex;gap:8px}
+.log-row:last-child{border:none}
+.log-ts{color:var(--text3);flex-shrink:0}
+.log-call{color:var(--green)} .log-put{color:var(--red)}
+.log-wait{color:var(--yellow)} .log-info{color:var(--text2)}
+
+/* PILLS */
+.pill{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;
+  border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.06em;border:1px solid}
+.pill.online{background:rgba(127,255,127,.07);border-color:rgba(127,255,127,.25);color:var(--green)}
+.pill.offline{background:rgba(255,144,144,.07);border-color:rgba(255,144,144,.25);color:var(--red)}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+.dot.green{background:var(--green);box-shadow:0 0 8px rgba(127,255,127,.6);animation:pulse 1.5s infinite}
+.dot.red{background:var(--red)}
+
+/* STATUS BAR */
+.status-bar{background:var(--bg2);border-top:1px solid var(--border);
+  padding:8px 24px;font-size:11px;color:var(--text2);
+  display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+
+/* PROGRESS */
+.progress-wrap{background:var(--bg4);border-radius:4px;height:6px;overflow:hidden;margin-top:8px}
+.progress-fill{height:100%;border-radius:4px;transition:width .4s,background .4s}
+
+/* WIDE */
+.wide{grid-column:1/-1}
+.half{grid-column:span 2}
+
+/* COOLDOWN TIMER */
+#cooldownBar{height:3px;background:var(--bg4);border-radius:2px;overflow:hidden;margin-top:8px}
+#cooldownFill{height:100%;background:var(--blue);border-radius:2px;
+  transition:width .5s linear;width:0%}
+
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes flash{0%,100%{opacity:1}50%{opacity:.2}}
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="brand">⬡ OCTO<span>COOKIE</span> <span style="font-size:14px;font-weight:400;color:var(--text2)">Dashboard + Analisador JS</span></div>
+  <div class="nav-right">
+    <span id="apiPill" class="pill offline"><span class="dot red"></span> API OFFLINE</span>
+    <span id="clockEl">--:--:--</span>
+  </div>
+</nav>
+
+<div class="main">
+
+  <!-- SINAL PRINCIPAL -->
+  <div class="card signal-card">
+    <div class="card-title">🎯 Sinal de Trading</div>
+    <div id="signalBig" class="signal-big" style="color:var(--yellow)">AGUARDAR</div>
+    <div id="signalScore" class="signal-score">Score: 0%</div>
+    <div id="signalSub" class="signal-sub">Aguardando dados...</div>
+    <div id="cooldownBar"><div id="cooldownFill"></div></div>
+    <div id="reasonsBox" class="reasons-box"></div>
+  </div>
+
+  <!-- STATUS -->
+  <div class="card status-card">
+    <div class="card-title">📡 Status do Sistema</div>
+    <div class="metric-row">
+      <span class="metric-label">API</span>
+      <span id="statusApi" class="metric-val" style="color:var(--red)">OFFLINE</span>
+    </div>
+    <div class="metric-row">
+      <span class="metric-label">Bot Rodando</span>
+      <span id="statusBot" class="metric-val">—</span>
+    </div>
+    <div class="metric-row">
+      <span class="metric-label">Contrato</span>
+      <span id="statusContract" class="metric-val">—</span>
+    </div>
+    <div class="metric-row">
+      <span class="metric-label">Snapshots</span>
+      <span id="statusSnaps" class="metric-val">—</span>
+    </div>
+    <div class="metric-row">
+      <span class="metric-label">Cmds Pendentes</span>
+      <span id="statusCmds" class="metric-val">—</span>
+    </div>
+    <div class="metric-row">
+      <span class="metric-label">Uptime</span>
+      <span id="statusUptime" class="metric-val" style="font-size:10px">—</span>
+    </div>
+  </div>
+
+  <!-- CONTADORES -->
+  <div class="card">
+    <div class="card-title">📊 Comandos Enviados</div>
+    <div class="counter-grid">
+      <div class="counter-box">
+        <div id="cntCall" class="counter-num" style="color:var(--green)">0</div>
+        <div class="counter-label">CALL</div>
+      </div>
+      <div class="counter-box">
+        <div id="cntPut" class="counter-num" style="color:var(--red)">0</div>
+        <div class="counter-label">PUT</div>
+      </div>
+      <div class="counter-box">
+        <div id="cntTotal" class="counter-num" style="color:var(--blue)">0</div>
+        <div class="counter-label">TOTAL</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LATÊNCIA -->
+  <div class="card">
+    <div class="card-title">⚡ Latência da API</div>
+    <div class="metric-row">
+      <span class="metric-label">Atual</span>
+      <span id="latCur" class="metric-val" style="color:var(--blue)">—</span>
+    </div>
+    <div class="metric-row">
+      <span class="metric-label">Média (50 req)</span>
+      <span id="latAvg" class="metric-val">—</span>
+    </div>
+    <div class="metric-row">
+      <span class="metric-label">Máximo</span>
+      <span id="latMax" class="metric-val" style="color:var(--orange)">—</span>
+    </div>
+    <div id="latBars" class="lat-bars"></div>
+  </div>
+
+  <!-- INDICADORES -->
+  <div class="card">
+    <div class="card-title">📈 Indicadores Técnicos</div>
+    <table class="ind-table">
+      <tr><td class="lbl">RSI (14)</td>   <td id="iRsi"  class="val">—</td></tr>
+      <tr><td class="lbl">SMA 9</td>      <td id="iSma9" class="val">—</td></tr>
+      <tr><td class="lbl">SMA 20</td>     <td id="iSma20"class="val">—</td></tr>
+      <tr><td class="lbl">MACD Hist.</td> <td id="iMacd" class="val">—</td></tr>
+      <tr><td class="lbl">BB Upper</td>   <td id="iBbUp" class="val">—</td></tr>
+      <tr><td class="lbl">BB Lower</td>   <td id="iBbLo" class="val">—</td></tr>
+      <tr><td class="lbl">Volatilidade</td><td id="iVol" class="val">—</td></tr>
+    </table>
+  </div>
+
+  <!-- SEGURANÇA -->
+  <div class="card">
+    <div class="card-title">🛡️ Segurança</div>
+    <div class="metric-row">
+      <span class="metric-label">Saldo</span>
+      <span id="secBalance" class="metric-val">—</span>
+    </div>
+    <div class="metric-row">
+      <span class="metric-label">Win Rate</span>
+      <span id="secWr" class="metric-val">—</span>
+    </div>
+    <div class="metric-row">
+      <span class="metric-label">Trades Hoje</span>
+      <span id="secTrades" class="metric-val">—</span>
+    </div>
+    <div class="metric-row">
+      <span class="metric-label">Perdas Consec.</span>
+      <span id="secConsec" class="metric-val">—</span>
+    </div>
+    <div class="metric-row">
+      <span class="metric-label">Lucro Diário</span>
+      <span id="secProfit" class="metric-val">—</span>
+    </div>
+    <div class="metric-row">
+      <span class="metric-label">Nível Segurança</span>
+      <span id="secLevel" class="metric-val">—</span>
+    </div>
+    <div class="progress-wrap">
+      <div id="secProgress" class="progress-fill" style="width:0%;background:var(--green)"></div>
+    </div>
+  </div>
+
+  <!-- LOG DE ATIVIDADE -->
+  <div class="card wide">
+    <div class="card-title">📋 Log de Atividade (Analisador JS)</div>
+    <div id="cmdLog" class="cmd-log">
+      <div class="log-row"><span class="log-ts">--:--:--</span><span class="log-info">Aguardando conexão com API...</span></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="status-bar">
+  <span id="statusMsg" style="color:var(--text2)">▶ Iniciando analisador...</span>
+  <span style="color:var(--text3)">OCTOCOOKIE Dashboard · Auto-atualiza 1.5s · localhost:5050</span>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  OCTOCOOKIE  —  Analisador JS (port do analize.py)
+//  Todos os indicadores técnicos + envio automático de CALL/PUT
+// ═══════════════════════════════════════════════════════════════════
+
+const API          = 'http://localhost:5050';
+const INTERVAL_MS  = 1500;
+const COOLDOWN_SEC = 10;
+const MIN_SCORE    = 40;
+
+// ── Estado ─────────────────────────────────────────────────────────
+let lastSignal    = '';
+let lastCmdTime   = 0;
+let isOnline      = false;
+let reconnects    = 0;
+let cmdCount      = { CALL: 0, PUT: 0 };
+const logEntries  = [];
+
+// ── Indicadores técnicos (port fiel do Python) ─────────────────────
+function calcRSI(prices, period = 14) {
+  if (prices.length < period + 1) return 50;
+  let gains = 0, losses = 0;
+  for (let i = prices.length - period; i < prices.length; i++) {
+    const ch = prices[i] - prices[i - 1];
+    if (ch >= 0) gains += ch; else losses += Math.abs(ch);
+  }
+  const ag = gains / period, al = losses / period;
+  if (al === 0) return 100;
+  return +(100 - 100 / (1 + ag / al)).toFixed(2);
+}
+
+function calcSMA(prices, p) {
+  if (prices.length < p) return null;
+  return prices.slice(-p).reduce((a, b) => a + b, 0) / p;
+}
+
+function calcEMA(prices, p) {
+  if (prices.length < p) return null;
+  const mult = 2 / (p + 1);
+  let ema = prices.slice(0, p).reduce((a, b) => a + b, 0) / p;
+  for (let i = p; i < prices.length; i++) ema = (prices[i] - ema) * mult + ema;
+  return ema;
+}
+
+function calcMACD(prices) {
+  if (prices.length < 26) return { macd: 0, signal: 0, histogram: 0 };
+  const ema12 = calcEMA(prices, 12);
+  const ema26 = calcEMA(prices, 26);
+  if (!ema12 || !ema26) return { macd: 0, signal: 0, histogram: 0 };
+  const macdVal = ema12 - ema26;
+  const macdSeries = [];
+  for (let i = 26; i <= prices.length; i++) {
+    const s = prices.slice(0, i);
+    const e12 = calcEMA(s, 12), e26 = calcEMA(s, 26);
+    if (e12 && e26) macdSeries.push(e12 - e26);
+  }
+  if (macdSeries.length < 9) return { macd: macdVal, signal: 0, histogram: 0 };
+  const sig = calcEMA(macdSeries, 9) || 0;
+  return { macd: macdVal, signal: sig, histogram: macdVal - sig };
+}
+
+function calcBollinger(prices, period = 20, mult = 2) {
+  if (prices.length < period) return null;
+  const sma = calcSMA(prices, period);
+  const sl  = prices.slice(-period);
+  const variance = sl.reduce((a, p) => a + (p - sma) ** 2, 0) / period;
+  const std = Math.sqrt(variance);
+  return { upper: sma + mult * std, middle: sma, lower: sma - mult * std };
+}
+
+function calcVolatility(prices) {
+  if (prices.length < 2) return 0;
+  const mean = prices.reduce((a, b) => a + b, 0) / prices.length;
+  const variance = prices.reduce((a, p) => a + (p - mean) ** 2, 0) / prices.length;
+  return mean !== 0 ? Math.sqrt(variance) / mean : 0;
+}
+
+// ── Motor de análise (port fiel do analyze() do Python) ────────────
+function analyze(data) {
+  const prices = data.priceHistory || [];
+  if (!prices.length || prices.length < 5) {
+    return { signal: 'AGUARDAR', score: 0, color: 'var(--yellow)',
+             reasons: ['Histórico insuficiente'], indicators: {}, action: 'WAIT' };
+  }
+
+  const current = data.currentPrice || prices[prices.length - 1];
+  const rsi    = calcRSI(prices);
+  const sma20  = calcSMA(prices, 20);
+  const sma9   = calcSMA(prices, 9);
+  const macd   = calcMACD(prices);
+  const bb     = calcBollinger(prices);
+  const vol    = calcVolatility(prices.slice(-20));
+
+  const ind = { rsi, sma20, sma9, macd, bollinger: bb, volatility: vol, price: current };
+
+  let callScore = 0, putScore = 0;
+  const reasons = [];
+
+  const rsiLow  = data.rsiLow  || 30;
+  const rsiHigh = data.rsiHigh || 70;
+
+  if (rsi < rsiLow) {
+    callScore += 2;
+    reasons.push({ text: `✅ RSI ${rsi.toFixed(1)} < ${rsiLow} → sobrevenda (CALL)`, cls: 'r-good' });
+  } else if (rsi > rsiHigh) {
+    putScore += 2;
+    reasons.push({ text: `✅ RSI ${rsi.toFixed(1)} > ${rsiHigh} → sobrecompra (PUT)`, cls: 'r-good' });
+  } else {
+    reasons.push({ text: `⚪ RSI ${rsi.toFixed(1)} neutro (${rsiLow}–${rsiHigh})`, cls: 'r-neutral' });
+  }
+
+  if (sma20 && sma9) {
+    if (current > sma20 && sma9 > sma20) {
+      callScore += 1;
+      reasons.push({ text: '✅ Preço > SMA20 e SMA9 > SMA20 (tendência alta)', cls: 'r-good' });
+    } else if (current < sma20 && sma9 < sma20) {
+      putScore += 1;
+      reasons.push({ text: '✅ Preço < SMA20 e SMA9 < SMA20 (tendência baixa)', cls: 'r-good' });
+    } else {
+      reasons.push({ text: '⚪ SMA sem tendência clara', cls: 'r-neutral' });
+    }
+  }
+
+  const hist = macd.histogram;
+  if (hist > 0 && macd.macd > macd.signal) {
+    callScore += 2;
+    reasons.push({ text: `✅ MACD histograma positivo (${hist.toFixed(6)}) → momentum alta`, cls: 'r-good' });
+  } else if (hist < 0 && macd.macd < macd.signal) {
+    putScore += 2;
+    reasons.push({ text: `✅ MACD histograma negativo (${hist.toFixed(6)}) → momentum baixa`, cls: 'r-good' });
+  } else {
+    reasons.push({ text: `⚪ MACD neutro (${hist.toFixed(6)})`, cls: 'r-neutral' });
+  }
+
+  if (bb) {
+    if (current <= bb.lower) {
+      callScore += 2;
+      reasons.push({ text: '✅ Preço na banda inferior → pressão compradora (CALL)', cls: 'r-good' });
+    } else if (current >= bb.upper) {
+      putScore += 2;
+      reasons.push({ text: '✅ Preço na banda superior → pressão vendedora (PUT)', cls: 'r-good' });
+    } else {
+      reasons.push({ text: '⚪ Preço dentro das Bandas de Bollinger', cls: 'r-neutral' });
+    }
+  }
+
+  const volPct = vol * 10000;
+  if (vol < 0.001) {
+    reasons.push({ text: `✅ Volatilidade baixa (${volPct.toFixed(3)}%) → mercado estável`, cls: 'r-good' });
+  } else {
+    reasons.push({ text: `⚠️ Volatilidade alta (${volPct.toFixed(3)}%) → risco elevado`, cls: 'r-warn' });
+    callScore = Math.max(0, callScore - 1);
+    putScore  = Math.max(0, putScore  - 1);
+  }
+
+  const wins   = data.wins   || 0;
+  const losses = data.losses || 0;
+  const total  = wins + losses;
+  if (total >= 5) {
+    const wr = (wins / total) * 100;
+    if (wr >= 60) {
+      reasons.push({ text: `✅ Win rate ${wr.toFixed(1)}% ≥ 60% → bot confiável`, cls: 'r-good' });
+    } else if (wr < 45) {
+      reasons.push({ text: `⚠️ Win rate ${wr.toFixed(1)}% < 45% → desempenho fraco`, cls: 'r-warn' });
+      callScore = Math.max(0, callScore - 1);
+      putScore  = Math.max(0, putScore  - 1);
+    }
+  }
+
+  const consec = data.consecutiveLosses || 0;
+  if (consec >= 3) {
+    reasons.push({ text: `⚠️ ${consec} perdas consecutivas → aguardar reversão`, cls: 'r-warn' });
+    callScore = 0; putScore = 0;
+  }
+
+  const maxScore    = 8;
+  const netCall     = (callScore / maxScore) * 100;
+  const netPut      = (putScore  / maxScore) * 100;
+  const minThresh   = Math.max(15, data.minScore || 25);
+
+  let signal, score, color, action;
+  if (callScore > putScore && netCall >= minThresh) {
+    signal = 'COMPRAR (CALL)'; score = netCall; color = 'var(--green)'; action = 'CALL';
+  } else if (putScore > callScore && netPut >= minThresh) {
+    signal = 'VENDER (PUT)';   score = netPut;  color = 'var(--red)';   action = 'PUT';
+  } else {
+    signal = 'AGUARDAR'; score = Math.max(netCall, netPut); color = 'var(--yellow)'; action = 'WAIT';
+  }
+
+  return { signal, score: +score.toFixed(1), color, reasons, indicators: ind, action };
+}
+
+// ── Helpers UI ─────────────────────────────────────────────────────
+function ts() { return new Date().toLocaleTimeString('pt-BR'); }
+function fmt(v, d = 5) { return v != null ? parseFloat(v).toFixed(d) : '—'; }
+function el(id) { return document.getElementById(id); }
+
+function addLog(msg, cls = 'log-info') {
+  logEntries.unshift({ msg, cls, time: ts() });
+  if (logEntries.length > 100) logEntries.pop();
+  el('cmdLog').innerHTML = logEntries.map(e =>
+    `<div class="log-row"><span class="log-ts">${e.time}</span><span class="${e.cls}">${e.msg}</span></div>`
+  ).join('');
+}
+
+function setOnline(online) {
+  isOnline = online;
+  const pill = el('apiPill');
+  if (online) {
+    pill.className = 'pill online';
+    pill.innerHTML = '<span class="dot green"></span> API ONLINE';
+    el('statusApi').textContent = 'ONLINE';
+    el('statusApi').style.color = 'var(--green)';
+  } else {
+    pill.className = 'pill offline';
+    pill.innerHTML = '<span class="dot red"></span> API OFFLINE';
+    el('statusApi').textContent = 'OFFLINE';
+    el('statusApi').style.color = 'var(--red)';
+  }
+}
+
+function updateLatBars(history) {
+  const bars = el('latBars');
+  if (!history || !history.length) { bars.innerHTML = ''; return; }
+  const last50 = history.slice(-50);
+  const mx = Math.max(...last50.map(x => x.ms), 1);
+  bars.innerHTML = last50.map(x => {
+    const h = Math.max(4, (x.ms / mx) * 50);
+    const c = x.ms < 30 ? '#7fff7f' : x.ms < 100 ? '#ffe77f' : '#ff9090';
+    return `<div class="lat-bar" style="height:${h}px;background:${c};opacity:.8"></div>`;
+  }).join('');
+}
+
+function updateCooldownBar() {
+  const elapsed = (Date.now() / 1000) - lastCmdTime;
+  const pct     = Math.min(100, (elapsed / COOLDOWN_SEC) * 100);
+  el('cooldownFill').style.width = pct + '%';
+}
+
+// ── Envio de comando CALL/PUT para a API ────────────────────────────
+async function sendCommand(action, score, reason) {
+  try {
+    await fetch(`${API}/api/command`, {
+      method : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body   : JSON.stringify({ action, score, reason, ts: new Date().toISOString() }),
+    });
+    cmdCount[action]++;
+    el('cntCall').textContent  = cmdCount.CALL;
+    el('cntPut').textContent   = cmdCount.PUT;
+    el('cntTotal').textContent = cmdCount.CALL + cmdCount.PUT;
+    addLog(`✅ ${action} enviado | score ${score.toFixed(1)}%`,
+           action === 'CALL' ? 'log-call' : 'log-put');
+  } catch (e) {
+    addLog(`❌ Erro ao enviar ${action}: ${e.message}`, 'log-info');
+  }
+}
+
+// ── Ciclo principal ────────────────────────────────────────────────
+async function tick() {
+  try {
+    const [dash, latest] = await Promise.all([
+      fetch(`${API}/api/dashboard`, { cache: 'no-store' }).then(r => r.json()),
+      fetch(`${API}/api/latest`,    { cache: 'no-store' }).then(r => r.json()),
+    ]);
+
+    if (!isOnline) addLog('API reconectada.', 'log-info');
+    setOnline(true);
+    reconnects = 0;
+
+    // Stats
+    const stats = dash.stats || {};
+    el('statusSnaps').textContent  = dash.snapshots || 0;
+    el('statusCmds').textContent   = dash.pending_commands || 0;
+    const uptRaw = dash.uptime_since || '';
+    el('statusUptime').textContent = uptRaw ? uptRaw.substring(11, 19) : '—';
+
+    // Latência
+    const lat = dash.latency || {};
+    el('latCur').textContent = lat.last_ms != null ? `${lat.last_ms.toFixed(1)} ms` : '—';
+    el('latAvg').textContent = lat.avg_ms  != null ? `${lat.avg_ms.toFixed(1)} ms`  : '—';
+    el('latMax').textContent = lat.max_ms  != null ? `${lat.max_ms.toFixed(1)} ms`  : '—';
+    updateLatBars(lat.history);
+
+    if (latest && !latest.error) {
+      // ── Análise local ───────────────────────────────────────────
+      const result  = analyze(latest);
+      const prices  = latest.priceHistory || [];
+      const ind     = result.indicators;
+      const wins    = latest.wins    || 0;
+      const losses  = latest.losses  || 0;
+      const total   = wins + losses || 1;
+      const wr      = (wins / total) * 100;
+      const dp      = latest.dailyProfit  || 0;
+      const sec     = latest.securityLevel || 70;
+      const trades  = latest.tradesToday  || 0;
+      const maxT    = latest.maxTrades    || 100;
+      const bal     = latest.balance      || 0;
+      const bot     = latest.botRunning;
+      const oc      = latest.openContract;
+      const consec  = latest.consecutiveLosses || 0;
+
+      // Sinal
+      const sigEl = el('signalBig');
+      sigEl.textContent  = result.signal;
+      sigEl.style.color  = result.color;
+      el('signalScore').textContent = `Score de confiança: ${result.score.toFixed(1)}%`;
+      el('signalSub').textContent   =
+        `Bot ${bot ? 'rodando' : 'parado'} · ${trades}/${maxT} trades · Win ${wr.toFixed(1)}%`;
+
+      // Log de mudança de sinal
+      if (result.signal !== lastSignal) {
+        const cls = result.signal.includes('CALL') ? 'log-call' :
+                    result.signal.includes('PUT')  ? 'log-put'  : 'log-wait';
+        addLog(`Sinal → ${result.signal} | score ${result.score.toFixed(1)}%`, cls);
+        lastSignal = result.signal;
+        sigEl.classList.add('flash');
+        setTimeout(() => sigEl.classList.remove('flash'), 800);
+      }
+
+      // Razões
+      el('reasonsBox').innerHTML = result.reasons.map(r =>
+        `<div class="${r.cls}">${r.text}</div>`
+      ).join('');
+
+      // Status bar
+      const cooldownRem = Math.max(0, COOLDOWN_SEC - (Date.now() / 1000 - lastCmdTime));
+      let statusMsg;
+      if (result.action === 'WAIT') {
+        statusMsg = `▶ ${result.signal} | score ${result.score.toFixed(1)}%`;
+      } else if (!bot) {
+        statusMsg = '⚠️ Bot não está rodando — inicie o bot no HTML';
+      } else if (oc) {
+        statusMsg = '⏳ Contrato aberto — aguardando fechar';
+      } else if (cooldownRem > 0) {
+        statusMsg = `⏳ Cooldown: ${cooldownRem.toFixed(0)}s restantes`;
+      } else {
+        statusMsg = `✅ ${result.signal} | score ${result.score.toFixed(1)}% | pronto`;
+      }
+      el('statusMsg').textContent = statusMsg;
+      el('statusMsg').style.color = result.color;
+
+      // ── Auto-envio CALL/PUT ─────────────────────────────────────
+      const nowSec  = Date.now() / 1000;
+      const cdOk    = (nowSec - lastCmdTime) >= COOLDOWN_SEC;
+      if (result.action !== 'WAIT' && result.score >= MIN_SCORE
+          && cdOk && bot && !oc && consec < 3) {
+        lastCmdTime = nowSec;
+        sendCommand(result.action, result.score, result.signal);
+      }
+
+      // Indicadores
+      const rsiVal = ind.rsi;
+      const rsiEl  = el('iRsi');
+      rsiEl.textContent = rsiVal != null ? rsiVal.toFixed(2) : '—';
+      rsiEl.style.color = rsiVal > 70 ? 'var(--red)' : rsiVal < 30 ? 'var(--green)' : 'var(--text)';
+
+      el('iSma9').textContent  = ind.sma9  ? fmt(ind.sma9)  : '—';
+      el('iSma20').textContent = ind.sma20 ? fmt(ind.sma20) : '—';
+      el('iMacd').textContent  = ind.macd  ? ind.macd.histogram.toFixed(6) : '—';
+      if (ind.bollinger) {
+        el('iBbUp').textContent = fmt(ind.bollinger.upper);
+        el('iBbLo').textContent = fmt(ind.bollinger.lower);
+      }
+      el('iVol').textContent = ind.volatility != null
+        ? `${(ind.volatility * 10000).toFixed(4)}%` : '—';
+
+      // Segurança
+      el('statusBot').textContent      = bot ? 'SIM' : 'NÃO';
+      el('statusBot').style.color      = bot ? 'var(--green)' : 'var(--red)';
+      el('statusContract').textContent = oc  ? 'ABERTO' : 'NENHUM';
+      el('statusContract').style.color = oc  ? 'var(--yellow)' : 'var(--text2)';
+
+      el('secBalance').textContent = `$ ${bal.toFixed(2)}`;
+      el('secBalance').style.color = bal >= 0 ? 'var(--green)' : 'var(--red)';
+      el('secWr').textContent      = `${wr.toFixed(1)}%`;
+      el('secWr').style.color      = wr >= 60 ? 'var(--green)' : wr < 45 ? 'var(--red)' : 'var(--yellow)';
+      el('secTrades').textContent  = `${trades}/${maxT}`;
+      el('secConsec').textContent  = consec;
+      el('secConsec').style.color  = consec >= 3 ? 'var(--red)' : 'var(--text)';
+      el('secProfit').textContent  = `$ ${dp.toFixed(2)}`;
+      el('secProfit').style.color  = dp >= 0 ? 'var(--green)' : 'var(--red)';
+      el('secLevel').textContent   = `${sec}%`;
+      el('secProgress').style.width      = `${sec}%`;
+      el('secProgress').style.background = sec >= 60 ? 'var(--green)' : sec >= 40 ? 'var(--yellow)' : 'var(--red)';
+    }
+
+  } catch (e) {
+    if (isOnline) {
+      reconnects++;
+      setOnline(false);
+      addLog(`API desconectada. Reconectando... (#${reconnects})`, 'log-wait');
+      el('statusMsg').textContent = `▶ API offline — tentando reconectar...`;
+      el('statusMsg').style.color = 'var(--red)';
+    }
+  }
+}
+
+// Clock + loop
+setInterval(() => { el('clockEl').textContent = ts(); updateCooldownBar(); }, 500);
+setInterval(tick, INTERVAL_MS);
+tick();
+</script>
+</body>
+</html>
