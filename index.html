@@ -222,7 +222,11 @@ tr:hover td{background:var(--bg3)}
       <div class="grid-4col">
         <button class="success" onclick="manualTrade('CALL')"><i class="fas fa-arrow-up"></i> CALL MANUAL</button>
         <button class="danger" onclick="manualTrade('PUT')"><i class="fas fa-arrow-down"></i> PUT MANUAL</button>
+<<<<<<< HEAD
         <button class="info" onclick="openCloudPopup()"><i class="fas fa-robot"></i> BOT AUTOMÁTICO</button>
+=======
+        <button class="info" onclick="openCloudPopup()"><i class="fas fa-cloud"></i> NUVEM 24H</button>
+>>>>>>> 6fb59e0c1c373e7e309d1d0cf92b25c33ecf46d8
         <button onclick="resetDaily()"><i class="fas fa-redo"></i> RESET DIÁRIO</button>
       </div>
       <div class="flex-between" style="margin-top:10px">
@@ -389,16 +393,28 @@ tr:hover td{background:var(--bg3)}
 <div class="popup-overlay" id="cloudPopup">
   <div class="popup-container">
     <div class="popup-header">
+<<<<<<< HEAD
       <h2><i class="fas fa-robot"></i> Bot Automático (Octocookie API)</h2>
+=======
+      <h2><i class="fas fa-cloud"></i> Rodar Bot na Nuvem (24H)</h2>
+>>>>>>> 6fb59e0c1c373e7e309d1d0cf92b25c33ecf46d8
       <button class="close-btn" onclick="closeCloudPopup()">&times;</button>
     </div>
     <div class="popup-content">
       <h3>Como funciona:</h3>
       <ul style="padding-left:20px;margin-bottom:12px">
+<<<<<<< HEAD
         <li>O <strong>backend.js</strong> (Octocookie API Server) será iniciado localmente na porta <strong>5050</strong></li>
         <li>O bot ficará escutando sinais de análise e enviando ordens CALL/PUT automaticamente</li>
         <li>O dashboard abaixo mostra em tempo real os dados e comandos da API</li>
         <li>Você pode parar o bot a qualquer momento clicando novamente no botão</li>
+=======
+        <li>O bot será executado em um servidor na nuvem 24 horas por dia</li>
+        <li>Você pode fechar esta página e o trading continuará</li>
+        <li>Configurações atuais serão aplicadas: Taxa, Stop Loss, Take Profit, etc.</li>
+        <li>Todos os trades estarão salvos em tempo real no Firebase</li>
+        <li>Você pode parar o bot a qualquer momento clicando novamente</li>
+>>>>>>> 6fb59e0c1c373e7e309d1d0cf92b25c33ecf46d8
       </ul>
       <h3>Configurações que serão enviadas:</h3>
       <div style="background:var(--bg3);padding:12px;border-radius:10px;font-size:12px;margin-bottom:12px">
@@ -411,6 +427,7 @@ tr:hover td{background:var(--bg3)}
       <div style="background:rgba(255,80,80,0.08);border:1px solid rgba(255,80,80,0.2);border-radius:10px;padding:12px;font-size:12px;color:#ff9090">
         <strong>⚠️ Aviso:</strong> Este bot opera automaticamente. Monitore seus trades. Trading é arriscado — nunca invista mais do que pode perder.
       </div>
+<<<<<<< HEAD
       <!-- Status do bot automático -->
       <div id="autoBotStatusBox" style="margin-top:14px;padding:12px 16px;border-radius:10px;font-size:12px;background:rgba(255,255,255,0.05);border:1px solid var(--border);display:flex;align-items:center;gap:10px">
         <span id="autoBotDot" class="api-dot api-offline"></span>
@@ -421,6 +438,13 @@ tr:hover td{background:var(--bg3)}
     <div class="popup-footer">
       <button onclick="closeCloudPopup()">Cancelar</button>
       <button class="info" id="toggleAutoBotBtn" onclick="toggleCloudBot()"><i class="fas fa-robot"></i> Ativar Bot Automático</button>
+=======
+      <iframe src="https://deriv-server-ten.vercel.app/" frameborder="0" scrolling="yes" style="width:100%;height:400px;border-radius:12px;margin-top:14px;border:1px solid var(--border)"></iframe>
+    </div>
+    <div class="popup-footer">
+      <button onclick="closeCloudPopup()">Cancelar</button>
+      <button class="info" onclick="toggleCloudBot()"><i class="fas fa-rocket"></i> Ativar Bot na Nuvem</button>
+>>>>>>> 6fb59e0c1c373e7e309d1d0cf92b25c33ecf46d8
     </div>
   </div>
 </div>
@@ -453,6 +477,7 @@ tr:hover td{background:var(--bg3)}
 //  OCTOCOOKIE TRADER BOT
 //  Design: OCTOCOOKIE | Lógica: NIB Trader
 // =============================================
+<<<<<<< HEAD
 
 // --- FIREBASE ---
 let db;
@@ -755,6 +780,287 @@ async function _refreshAutoBotStatus(){
     }
 }
 
+=======
+
+// --- FIREBASE ---
+let db;
+try {
+    firebase.initializeApp({
+        apiKey:"AIzaSyCi2w_2tSCZj_1An-dmPQyBevFxrJkEQds",
+        authDomain:"nibinbot.firebaseapp.com",
+        projectId:"nibinbot",
+        storageBucket:"nibinbot.firebasestorage.app",
+        messagingSenderId:"78157555518",
+        appId:"1:78157555518:web:3cc525509ad1fa59756e6f",
+        measurementId:"G-PYPQ9KWKB2"
+    });
+    db = firebase.database();
+    const analytics = firebase.analytics();
+} catch(e){ console.warn("Firebase não inicializado:", e); }
+
+// --- CONFIG ---
+const CONFIG = {
+    derivToken:'',
+    openaiKey:'',
+    cgApiKey:'CG-xHTaEMtFCvYd9q2sfeurjDwC',
+    brapiKey:'jANVFGBdizAfgwGyJBENwb',
+    symbol:'R_25',
+    multiplier:400,
+    stake:0.35,
+    stopLoss:-0.35,
+    takeProfit:0,
+    maxTrades:100,
+    rsiLow:30,
+    rsiHigh:70,
+    securityLevel:70,
+    riskLevel:40,
+    minScore:25,
+    maxVolatility:0.002,
+    cryptoList:['cryBTCUSD','cryETHUSD'],
+    cycleInterval:60,
+    balance:100,
+    tradePercent:0.10,
+    apiEndpoints:{
+        deriv:'wss://ws.binaryws.com/websockets/v3?app_id=1089',
+        coingecko:'https://api.coingecko.com/api/v3',
+        brapi:'https://brapi.dev/api'
+    }
+};
+CONFIG.takeProfit = CONFIG.balance * CONFIG.tradePercent;
+
+// --- STATE ---
+let state = {
+    botRunning:false,
+    strategyActive:false,
+    dailyProfit:0.0,
+    lastProfit:0.0,
+    lastProfitPercent:0,
+    tradesToday:0,
+    wins:0,
+    losses:0,
+    currentPrice:0.0,
+    priceHistory:[],
+    trades:[],
+    ws:null,
+    apiStatus:{ deriv:false, coingecko:false, brapi:false },
+    charts:{ profit:null, price:null, pingInterval:null },
+    consecutiveLosses:0,
+    isWaitingForRecovery:false,
+    isViable:false,
+    balanceBeforeTrade:0,
+    isCycling:false,
+    currentAssetIndex:0,
+    ticksSinceCycle:0,
+    openContract:null
+};
+
+let simulation = {
+    active:false, direction:null, startTime:null,
+    duration:1, timer:null, priceData:[], predictionScore:0,
+    priceAtStart:0, lastPrediction:null
+};
+
+// =============================================
+//  STATUS / UI HELPERS
+// =============================================
+function updateConnectionBar(status, message){
+    const bar = document.getElementById('connStatusBar');
+    const text = document.getElementById('connStatusText');
+    bar.className = `conn-status-bar ${status==='connected'?'connected':status==='connecting'?'connecting':''}`;
+    text.textContent = message;
+}
+
+function updateStatus(status){
+    const el = document.getElementById('botStatus');
+    const dot = document.getElementById('botStatusDot');
+    const labels = {online:'ONLINE',offline:'OFFLINE',paused:'PAUSADO',connecting:'CONECTANDO'};
+    el.innerHTML = '';
+    const dotEl = document.createElement('span');
+    dotEl.className = `api-dot ${status==='online'?'online':status==='paused'?'paused':'offline'}`;
+    el.appendChild(dotEl);
+    el.appendChild(document.createTextNode(' ' + (labels[status]||status.toUpperCase())));
+    el.className = `status ${status}`;
+    if(dot) dot.className = `api-dot api-${status==='online'?'online':status==='paused'?'paused':'offline'}`;
+}
+
+function updateAPIStatus(){
+    document.getElementById('derivStatus').className =
+        'api-dot ' + (state.apiStatus.deriv ? 'api-online' : 'api-offline');
+    document.getElementById('coinGeckoStatus').className = 'api-dot api-paused';
+    document.getElementById('brapiStatus').className = 'api-dot api-paused';
+}
+
+function addLog(message, type='info'){
+    const logsEl = document.getElementById('logs');
+    const time = new Date().toLocaleTimeString('pt-BR');
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    entry.innerHTML = `<span class="log-time">[${time}]</span><span class="log-${type}">${message}</span>`;
+    logsEl.prepend(entry);
+    if(logsEl.children.length > 50) logsEl.removeChild(logsEl.lastChild);
+}
+
+// =============================================
+//  REGULADORES
+// =============================================
+function updateSecurity(){
+    const level = parseInt(document.getElementById('securityLevel').value);
+    CONFIG.securityLevel = level;
+    document.getElementById('securityValue').textContent = level + '%';
+    const factor = (level - 10) / 90;
+    CONFIG.rsiLow = 40 - (20 * factor);
+    CONFIG.rsiHigh = 60 + (20 * factor);
+    CONFIG.maxTrades = Math.floor(10 + (100 - level) * 0.9);
+    document.getElementById('rsiRange').textContent = `${Math.floor(CONFIG.rsiLow)}/${Math.floor(CONFIG.rsiHigh)}`;
+    addLog(`Segurança: ${level}% | RSI: ${CONFIG.rsiLow.toFixed(1)}/${CONFIG.rsiHigh.toFixed(1)} | Max Trades: ${CONFIG.maxTrades}`, 'info');
+    checkRiskAlert();
+}
+
+function updateRisk(){
+    const risk = parseInt(document.getElementById('riskLevel').value);
+    CONFIG.riskLevel = risk;
+    document.getElementById('riskValue').textContent = risk + '%';
+    CONFIG.maxTrades = Math.floor((risk / 10) * 10);
+    CONFIG.minScore = Math.max(10, 40 - (risk - 10) * 0.3);
+    CONFIG.maxVolatility = 0.001 + (risk - 10) * 0.00001;
+    document.getElementById('maxTradesDisplay').textContent = CONFIG.maxTrades;
+    addLog(`Agressividade: ${risk}% | Max Trades: ${CONFIG.maxTrades} | Min Score: ${CONFIG.minScore.toFixed(0)}%`, 'warn');
+    checkRiskAlert();
+}
+
+function checkRiskAlert(){
+    const box = document.getElementById('riskAlertBox');
+    const msg = document.getElementById('riskAlertMessage');
+    const risky = CONFIG.riskLevel > 80 || CONFIG.securityLevel < 30;
+    if(risky){
+        let m = '';
+        if(CONFIG.riskLevel > 80 && CONFIG.securityLevel < 30) m = 'PERIGO CRÍTICO! Risco muito alto + Segurança muito baixa = perdas potenciais massivas!';
+        else if(CONFIG.riskLevel > 80) m = `Risco MUITO ALTO (${CONFIG.riskLevel}%) — Reduza para 60% ou menos.`;
+        else m = `Segurança MUITO BAIXA (${CONFIG.securityLevel}%) — Aumente para 50% ou mais.`;
+        msg.textContent = m;
+        box.classList.add('show');
+    } else {
+        box.classList.remove('show');
+    }
+}
+
+function updateBalance(){
+    const auto = document.getElementById('autoAdjust').checked;
+    let sPct, slPct, tpPct;
+    if(auto){
+        if(CONFIG.symbol.startsWith('cry')||state.isCycling){ sPct=2.0; slPct=10.0; tpPct=15.0; }
+        else if(CONFIG.symbol.startsWith('frx')){ sPct=1.0; slPct=3.0; tpPct=5.0; }
+        else { sPct=0.5; slPct=2.0; tpPct=5.0; }
+        document.getElementById('stakePct').value = sPct;
+        document.getElementById('slPct').value = slPct;
+        document.getElementById('tpPct').value = tpPct;
+    } else {
+        sPct = parseFloat(document.getElementById('stakePct').value) || 1;
+        slPct = parseFloat(document.getElementById('slPct').value) || 5;
+        tpPct = parseFloat(document.getElementById('tpPct').value) || 10;
+    }
+    CONFIG.stake = (CONFIG.balance * sPct) / 100;
+    CONFIG.stopLoss = -(CONFIG.balance * slPct) / 100;
+    CONFIG.takeProfit = (CONFIG.balance * tpPct) / 100;
+    const dtEl = document.getElementById('dailyTarget');
+    const dsEl = document.getElementById('dailyStop');
+    const blEl = document.getElementById('balanceDisplay');
+    if(dtEl) dtEl.textContent = '+' + CONFIG.takeProfit.toFixed(2);
+    if(dsEl) dsEl.textContent = CONFIG.stopLoss.toFixed(2);
+    if(blEl) blEl.textContent = CONFIG.balance.toFixed(2);
+    if(document.getElementById('profitPercent')) document.getElementById('profitPercent').textContent = tpPct + '%';
+    if(document.getElementById('stopLossStatic')) document.getElementById('stopLossStatic').textContent = CONFIG.stopLoss.toFixed(2) + ' USD';
+}
+
+// =============================================
+//  TOKEN SAVE
+// =============================================
+function saveDerivToken(){
+    const token = document.getElementById('derivTokenInput').value.trim();
+    if(token){
+        CONFIG.derivToken = token;
+        localStorage.setItem('userDerivToken', token);
+        addLog('Token Deriv salvo.', 'success');
+    } else {
+        addLog('Token vazio — não salvo.', 'warn');
+    }
+}
+
+function saveOpenAIKey(){
+    const key = document.getElementById('openaiTokenInput').value.trim();
+    if(key){ CONFIG.openaiKey = key; localStorage.setItem('userOpenAIKey', key); addLog('OpenAI Key salva.', 'success'); }
+}
+
+// =============================================
+//  BOT CONTROLS
+// =============================================
+function startBot(){
+    if(state.botRunning){ addLog('Bot já está rodando.', 'warn'); return; }
+    if(!CONFIG.derivToken){ addLog('Configure o token primeiro!', 'error'); return; }
+    addLog('Iniciando bot de trading...', 'info');
+    state.botRunning = true;
+    updateStatus('connecting');
+    updateConnectionBar('connecting', 'Conectando ao servidor Deriv...');
+    connectDerivWebSocket();
+}
+
+function pauseBot(){
+    if(!state.botRunning) return;
+    addLog('Bot pausado.', 'warn');
+    state.botRunning = false;
+    state.strategyActive = false;
+    if(simulation.active) stopSimulation();
+    updateStatus('paused');
+    updateConnectionBar('error', 'Bot pausado pelo usuário');
+}
+
+function stopBot(){
+    addLog('Parando bot...', 'info');
+    state.botRunning = false;
+    state.strategyActive = false;
+    if(simulation.active) stopSimulation();
+    if(state.ws){ state.ws.close(); state.ws = null; }
+    updateStatus('offline');
+    updateConnectionBar('error', 'Bot parado');
+    addLog('Bot parado.', 'info');
+}
+
+function resetDaily(){
+    state.dailyProfit=0; state.tradesToday=0; state.wins=0; state.losses=0;
+    state.trades=[]; state.consecutiveLosses=0; state.isWaitingForRecovery=false; state.isViable=false;
+    updateUI(); updateTradesTable();
+    addLog('Estatísticas diárias resetadas.', 'info');
+}
+
+function manualTrade(direction){
+    if(!state.botRunning){ addLog('Inicie o bot primeiro.', 'error'); return; }
+    addLog(`Iniciando análise de segurança para ${direction}...`, 'info');
+    runSecurityAnalysis(direction);
+}
+
+function cancelOrCloseOrder(){
+    if(state.openContract && state.openContract.id){
+        sellMultiplierContract(state.openContract.id);
+    } else if(state.ws && state.ws.readyState===1){
+        state.ws.send(JSON.stringify({ forget_all:'proposal' }));
+        addLog('Propostas pendentes canceladas.', 'warn');
+    }
+}
+
+function cycleNextAsset(){
+    if(!state.isCycling) return;
+    if(state.ws && state.ws.readyState===1) state.ws.send(JSON.stringify({ forget_all:'ticks' }));
+    state.currentAssetIndex = (state.currentAssetIndex+1) % CONFIG.cryptoList.length;
+    CONFIG.symbol = CONFIG.cryptoList[state.currentAssetIndex];
+    state.priceHistory=[]; state.ticksSinceCycle=0;
+    addLog(`Ciclando para: ${CONFIG.symbol}`, 'info');
+    subscribeTicks();
+}
+
+// =============================================
+//  CLOUD
+// =============================================
+>>>>>>> 6fb59e0c1c373e7e309d1d0cf92b25c33ecf46d8
 function openCloudPopup(){
     document.getElementById('cloudPopup').style.display='flex';
     document.body.style.overflow='hidden';
@@ -763,6 +1069,7 @@ function openCloudPopup(){
     document.getElementById('cloudStopLoss').textContent = CONFIG.stopLoss.toFixed(2);
     document.getElementById('cloudMaxTrades').textContent = CONFIG.maxTrades;
     document.getElementById('cloudSecurityLevel').textContent = CONFIG.securityLevel;
+<<<<<<< HEAD
     // Verifica status em background sem bloquear abertura do popup
     setTimeout(_refreshAutoBotStatus, 100);
 }
@@ -815,6 +1122,33 @@ async function toggleCloudBot(){
     if(text) text.innerHTML = _autoBotRunning
         ? 'Bot automático <strong style="color:#7fff7f">✅ RODANDO</strong> na porta 5050 — recebendo sinais CALL/PUT.'
         : 'Bot automático <strong>parado</strong> — clique em "Ativar Bot Automático" para iniciar.';
+=======
+}
+function closeCloudPopup(){ document.getElementById('cloudPopup').style.display='none'; document.body.style.overflow='auto'; }
+
+function toggleCloudBot(){
+    if(!CONFIG.derivToken){ alert('Configure o token primeiro.'); return; }
+    if(typeof db==='undefined'){ alert('Firebase não conectado.'); return; }
+    const userId = (CONFIG.derivToken||'sessao_anonima').replace(/[.#$[\]]/g,'_');
+    const ref = db.ref('bot_sessions/'+userId+'/cloud_command');
+    ref.once('value').then(snap => {
+        const status = snap.val()?.status||'STOPPED';
+        if(status==='RUNNING'){
+            ref.set({ status:'STOPPED', timestamp:Date.now() });
+            addLog('Comando enviado: PARAR servidor na nuvem.', 'info');
+            alert('Comando de PARADA enviado para a nuvem.');
+        } else {
+            ref.set({ status:'RUNNING', token:CONFIG.derivToken, config:{
+                tradePercent:CONFIG.tradePercent, takeProfit:CONFIG.takeProfit,
+                stopLoss:CONFIG.stopLoss, symbol:CONFIG.symbol,
+                rsiLow:CONFIG.rsiLow, rsiHigh:CONFIG.rsiHigh,
+                maxTrades:CONFIG.maxTrades, securityLevel:CONFIG.securityLevel
+            }, timestamp:Date.now() });
+            addLog('Comando enviado: INICIAR servidor na nuvem (24h).', 'success');
+            alert('Comando enviado! Bot iniciará no servidor em instantes.');
+        }
+    });
+>>>>>>> 6fb59e0c1c373e7e309d1d0cf92b25c33ecf46d8
 }
 
 // =============================================
@@ -1023,6 +1357,7 @@ function updatePrice(price){
     if(state.priceHistory.length>100) state.priceHistory.shift();
     document.getElementById('currentPrice').textContent = price.toFixed(5);
     updateCharts();
+<<<<<<< HEAD
     // ── OCTOCOOKIE API PUSH ──────────────────────────────────────────────────
     // Envia dados ao analize.py via octo_cookie_api.py
     const wins = state.wins||0, losses = state.losses||0;
@@ -1055,6 +1390,8 @@ function updatePrice(price){
             openContract      : state.openContract||null,
         })
     }).catch(()=>{}); // silencia erros se API offline
+=======
+>>>>>>> 6fb59e0c1c373e7e309d1d0cf92b25c33ecf46d8
 }
 
 // =============================================
@@ -1525,6 +1862,7 @@ document.addEventListener('DOMContentLoaded', function(){
 });
 
 function updateTime(){ document.getElementById('currentTime').textContent=new Date().toLocaleTimeString('pt-BR'); }
+<<<<<<< HEAD
 
 // ═══════════════════════════════════════════════════════════════════
 //  OCTOCOOKIE COMMAND POLL  —  recebe CALL/PUT do analize.py
@@ -1566,6 +1904,8 @@ function updateTime(){ document.getElementById('currentTime').textContent=new Da
     setInterval(pollCommand, POLL_MS);
     console.log('[OCTOCOOKIE] Command poll iniciado em http://localhost:5050/api/command');
 })();
+=======
+>>>>>>> 6fb59e0c1c373e7e309d1d0cf92b25c33ecf46d8
 </script>
 </body>
 </html>
