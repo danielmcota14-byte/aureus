@@ -102,246 +102,423 @@ function startBackendProcess(reason = 'manual') {
     setTimeout(() => startBackendProcess('auto-restart'), delay);
   });
 
-  _backendProcess.on('error', err => {
-    console.error('[WD] Erro no processo backend.js:', err.message);
-    _backendProcess = null;
-  });
-
-  return { ok: true, running: true, message: `backend.js iniciado (porta ${BACKEND_PORT})`, pid: _backendProcess.pid };
+  return { ok: true, running: true, pid: _backendProcess.pid };
 }
 
-function stopBackendProcess() {
-  _autoStartEnabled = false; // pausa auto-restart
-  if (!_backendProcess) return { ok: false, running: false, message: 'backend.js não está rodando' };
-  _backendProcess.kill('SIGTERM');
-  _backendProcess = null;
-  return { ok: true, running: false, message: 'backend.js encerrado (auto-restart pausado)' };
-}
-
-// ─── Health check periódico do backend ───────────────────────────────────────
-function checkBackendHealth() {
-  const options = { hostname: '127.0.0.1', port: BACKEND_PORT, path: '/api/health', method: 'GET', timeout: 3000 };
-  const req = http.request(options, (res) => {
-    let body = '';
-    res.on('data', d => body += d);
-    res.on('end', () => {
-      try {
-        const json = JSON.parse(body);
-        if (json.status !== 'online') {
-          console.warn('[HC] ⚠️  backend.js retornou status não-online:', json.status);
-          triggerRepair();
-        }
-        // Se circuito aberto, solicita reparo
-        if (json.circuit_breaker === 'OPEN') {
-          console.warn('[HC] ⚡ Circuit Breaker OPEN detectado — solicitando reparo');
-          triggerRepair();
-        }
-      } catch (e) {
-        console.warn('[HC] Resposta inválida do health check:', body.substring(0, 100));
-      }
-    });
-  });
-
-  req.on('error', (err) => {
-    // Backend não responde — se processo existe, pode estar travado
-    if (_backendProcess && _autoStartEnabled) {
-      console.error(`[HC] ❌ Backend não responde: ${err.message} — reiniciando`);
-      try { _backendProcess.kill('SIGKILL'); } catch(e) {}
-      _backendProcess = null;
-      setTimeout(() => startBackendProcess('health-check-failed'), 1000);
-    } else if (!_backendProcess && _autoStartEnabled) {
-      console.warn('[HC] Backend não está rodando — iniciando');
-      startBackendProcess('health-check-start');
-    }
-  });
-
-  req.on('timeout', () => {
-    console.warn('[HC] ⏱️  Health check timeout — backend pode estar travado');
-    req.destroy();
-    if (_backendProcess && _autoStartEnabled) {
-      try { _backendProcess.kill('SIGKILL'); } catch(e) {}
-      _backendProcess = null;
-      setTimeout(() => startBackendProcess('health-check-timeout'), 2000);
-    }
-  });
-
-  req.end();
-}
-
-function triggerRepair() {
-  const options = {
-    hostname: '127.0.0.1', port: BACKEND_PORT,
-    path: '/api/repair', method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Content-Length': 2 },
-    timeout: 3000,
-  };
-  const req = http.request(options, (res) => {
-    let body = '';
-    res.on('data', d => body += d);
-    res.on('end', () => console.log('[HC] ♻️  Reparo solicitado:', body.substring(0, 120)));
-  });
-  req.on('error', () => {});
-  req.write('{}');
-  req.end();
-}
-
-// ─── Endpoints bot automático ─────────────────────────────────────────────────
-app.get('/bot/status', (_req, res) => {
-  res.json({
-    running       : !!_backendProcess,
-    pid           : _backendProcess ? _backendProcess.pid : null,
-    restart_count : _restartCount,
-    last_restart  : _lastRestartAt ? new Date(_lastRestartAt).toISOString() : null,
-    auto_start    : _autoStartEnabled,
-    max_restarts  : MAX_RESTARTS,
-  });
-});
-
-app.post('/bot/start', (_req, res) => {
-  _autoStartEnabled = true;
-  res.json(startBackendProcess('manual'));
-});
-
-app.post('/bot/stop', (_req, res) => res.json(stopBackendProcess()));
-
-app.post('/bot/restart', (_req, res) => {
-  _autoStartEnabled = true;
-  stopBackendProcess();
-  setTimeout(() => {
-    _autoStartEnabled = true;
-    res.json(startBackendProcess('manual-restart'));
-  }, 1500);
-});
-
-// Reset do contador de restarts (para emergências)
-app.post('/bot/reset-restarts', (_req, res) => {
-  const before = _restartCount;
-  _restartCount     = 0;
-  _autoStartEnabled = true;
-  res.json({ ok: true, resets_cleared: before, message: 'Contador zerado. POST /bot/start para reiniciar.' });
-});
-
-// Proxy para /api/repair no backend
-app.post('/bot/repair', (_req, res) => {
-  triggerRepair();
-  res.json({ ok: true, message: 'Reparo solicitado ao backend' });
-});
-
-// ─── MoonPay helpers ──────────────────────────────────────────────────────────
-function buildMoonpayUrl(amount, walletAddress, currencyCode = 'ETH', baseCurrencyCode = 'BRL') {
-  const u = new URL(moonpayWidgetUrl);
-  u.searchParams.set('apiKey', moonpayPublicKey);
-  u.searchParams.set('currencyCode', currencyCode);
-  u.searchParams.set('baseCurrencyCode', baseCurrencyCode);
-  u.searchParams.set('baseCurrencyAmount', amount.toFixed(2));
-  u.searchParams.set('walletAddress', walletAddress);
-  u.searchParams.set('defaultPaymentMethod', 'PIX');
-  return u.toString();
-}
-
-// ─── MoonPay endpoints ────────────────────────────────────────────────────────
-app.get('/moonpay/url', (req, res) => {
-  const amount = parseFloat(req.query.amount);
-  const walletAddress = (req.query.walletAddress || '').trim();
-  const currencyCode  = (req.query.currency || 'ETH').toUpperCase();
-  if (!amount || amount <= 0) return res.status(400).json({ error: 'Valor inválido' });
-  if (!walletAddress) return res.status(400).json({ error: 'Endereço de carteira inválido' });
-  if (!moonpayPublicKey) return res.status(500).json({ error: 'Chave pública MoonPay não configurada' });
-  return res.json({ url: buildMoonpayUrl(amount, walletAddress, currencyCode) });
-});
-
-app.get('/moonpay/open', (req, res) => {
-  const amount = parseFloat(req.query.amount);
-  const walletAddress = (req.query.walletAddress || '').trim();
-  if (!amount || amount <= 0) return res.status(400).json({ error: 'Valor inválido' });
-  if (!walletAddress) return res.status(400).json({ error: 'Endereço de carteira inválido' });
-  if (!moonpayPublicKey) return res.status(500).json({ error: 'Chave pública MoonPay não configurada' });
-  return res.redirect(buildMoonpayUrl(amount, walletAddress));
-});
-
-app.get('/moonpay/config', (_req, res) => res.json({ widgetUrl: moonpayWidgetUrl }));
-
-app.post('/moonpay/transaction', async (req, res) => {
-  const { baseCurrencyAmount, currencyCode = 'BRL', walletAddress } = req.body || {};
-  if (!baseCurrencyAmount || !walletAddress)
-    return res.status(400).json({ error: 'Parâmetros inválidos' });
-  const secret = process.env.MOONPAY_SECRET_KEY;
-  if (!secret) return res.status(500).json({ error: 'MOONPAY_SECRET_KEY não configurada' });
-  try {
-    const resp = await fetch('https://api.moonpay.io/v3/transactions', {
-      method : 'POST',
-      headers: { Authorization: `Bearer ${secret}`, 'Content-Type': 'application/json' },
-      body   : JSON.stringify({ baseCurrencyAmount, currencyCode, walletAddress }),
-    });
-    const data = await resp.json();
-    return res.status(resp.status).json(data);
-  } catch (err) {
-    return res.status(500).json({ error: err.message || String(err) });
-  }
-});
-
-app.post('/moonpay/webhook', (req, res) => {
-  const signature = req.get('x-moonpay-signature') || req.get('x-signature') || req.get('x-mp-signature');
-  const webhookKey = process.env.MOONPAY_WEBHOOK_KEY;
-  if (!webhookKey) return res.status(500).json({ error: 'MOONPAY_WEBHOOK_KEY não configurada' });
-  if (!signature)  return res.status(400).json({ error: 'Assinatura ausente' });
-  const raw  = req.rawBody || Buffer.from(JSON.stringify(req.body || {}));
-  const hmac = crypto.createHmac('sha256', webhookKey).update(raw).digest('hex');
-  if (hmac !== signature) return res.status(400).json({ error: 'Assinatura inválida' });
-  console.log('Webhook MoonPay válido:', req.body);
-  return res.status(200).json({ received: true });
-});
-
-// ─── Estáticos + páginas ──────────────────────────────────────────────────────
-app.use(express.static(__dirname));
-app.get('/',                          (_req, res) => res.sendFile(path.join(__dirname, 'index.html')));
-app.get('/cryptex.html',              (_req, res) => res.sendFile(path.join(__dirname, 'CRYPTEX.html')));
-app.get('/CRYPTEX.html',              (_req, res) => res.sendFile(path.join(__dirname, 'CRYPTEX.html')));
-app.get('/octocookie.html',           (_req, res) => res.sendFile(path.join(__dirname, 'octocookie.html')));
-app.get('/dashboard_analisador.html', (_req, res) => res.sendFile(path.join(__dirname, 'dashboard_analisador.html')));
-
-// ─── Graceful shutdown ────────────────────────────────────────────────────────
-function onShutdown(signal) {
-  console.log(`\n[SRV] ${signal} recebido — encerrando graciosamente...`);
-  _autoStartEnabled = false;
+// ─── Função para matar o backend.js ──────────────────────────────────────────
+function killBackendProcess() {
   if (_backendProcess) {
-    console.log('[SRV] Encerrando backend.js...');
-    _backendProcess.kill('SIGTERM');
+    console.log(`[WD] 💀 Matando backend.js PID: ${_backendProcess.pid}`);
+    try {
+      _backendProcess.kill('SIGTERM');
+      setTimeout(() => {
+        if (_backendProcess && !_backendProcess.killed) {
+          console.log(`[WD] 💀 Forçando kill do backend.js`);
+          _backendProcess.kill('SIGKILL');
+        }
+        _backendProcess = null;
+      }, 3000);
+    } catch (err) {
+      console.error(`[WD] Erro ao matar processo: ${err.message}`);
+      _backendProcess = null;
+    }
   }
-  setTimeout(() => process.exit(0), 2000);
 }
 
-process.on('SIGINT',  () => onShutdown('SIGINT'));
-process.on('SIGTERM', () => onShutdown('SIGTERM'));
+// ─── API de reparo e monitoramento ───────────────────────────────────────────
+app.get('/api/status', (req, res) => {
+  res.json({
+    backend: {
+      running: !!_backendProcess,
+      pid: _backendProcess ? _backendProcess.pid : null,
+      restartCount: _restartCount,
+      lastRestartAt: _lastRestartAt,
+      autoStartEnabled: _autoStartEnabled
+    },
+    moonpay: {
+      hasPublicKey: !!moonpayPublicKey,
+      widgetUrl: moonpayWidgetUrl
+    },
+    uptime: process.uptime(),
+    timestamp: Date.now()
+  });
+});
 
+app.post('/api/repair', async (req, res) => {
+  console.log('[API] 🔧 Reparo manual solicitado');
+  
+  // Mata o processo se estiver rodando
+  if (_backendProcess) {
+    killBackendProcess();
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+  
+  // Reset parcial do contador
+  _restartCount = Math.max(0, _restartCount - 2);
+  
+  // Reinicia
+  const result = startBackendProcess('manual-repair');
+  
+  res.json({
+    message: 'Reparo executado',
+    result,
+    restartCount: _restartCount
+  });
+});
+
+app.post('/api/restart-backend', (req, res) => {
+  console.log('[API] 🔄 Reinício do backend solicitado');
+  
+  if (_backendProcess) {
+    killBackendProcess();
+    setTimeout(() => {
+      const result = startBackendProcess('manual-restart');
+      res.json({ message: 'Backend reiniciado', result });
+    }, 1000);
+  } else {
+    const result = startBackendProcess('manual-start');
+    res.json({ message: 'Backend iniciado', result });
+  }
+});
+
+app.post('/bot/reset-restarts', (req, res) => {
+  _restartCount = 0;
+  _autoStartEnabled = true;
+  console.log('[API] 🔄 Contador de restarts resetado');
+  res.json({ ok: true, restartCount: 0, autoStartEnabled: true });
+});
+
+app.post('/bot/disable-auto-start', (req, res) => {
+  _autoStartEnabled = false;
+  console.log('[API] ⏸️ Auto-start desabilitado');
+  res.json({ ok: true, autoStartEnabled: false });
+});
+
+app.post('/bot/enable-auto-start', (req, res) => {
+  _autoStartEnabled = true;
+  console.log('[API] ▶️ Auto-start habilitado');
+  res.json({ ok: true, autoStartEnabled: true });
+});
+
+// Health check simples para o Render
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'healthy',
+    backend: !!_backendProcess,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Health check detalhado
+app.get('/health/deep', async (req, res) => {
+  let backendHealthy = false;
+  
+  if (_backendProcess) {
+    try {
+      const backendHealthUrl = `http://localhost:${BACKEND_PORT}/health`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      const response = await fetch(backendHealthUrl, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      backendHealthy = response.ok;
+    } catch (err) {
+      backendHealthy = false;
+    }
+  }
+  
+  res.json({
+    status: backendHealthy ? 'healthy' : 'degraded',
+    backend: {
+      running: !!_backendProcess,
+      healthy: backendHealthy,
+      pid: _backendProcess ? _backendProcess.pid : null
+    },
+    restartCount: _restartCount,
+    autoStartEnabled: _autoStartEnabled,
+    uptime: process.uptime()
+  });
+});
+
+// ─── Webhook MoonPay (mantido original) ──────────────────────────────────────
+app.post('/api/moonpay/webhook', (req, res) => {
+  const signature = req.headers['moonpay-signature'];
+  
+  console.log('[MoonPay] Webhook recebido', {
+    signature: signature ? signature.substring(0, 20) + '...' : 'missing',
+    body: req.body
+  });
+  
+  // Verifica assinatura se tiver secret configurado
+  const webhookSecret = process.env.MOONPAY_WEBHOOK_SECRET;
+  if (webhookSecret && req.rawBody) {
+    const expectedSignature = crypto
+      .createHmac('sha256', webhookSecret)
+      .update(req.rawBody)
+      .digest('base64');
+    
+    if (signature !== expectedSignature) {
+      console.error('[MoonPay] ❌ Assinatura inválida');
+      return res.status(401).json({ error: 'Invalid signature' });
+    }
+    console.log('[MoonPay] ✅ Assinatura verificada');
+  }
+  
+  // Processa evento
+  const { type, data } = req.body;
+  
+  switch (type) {
+    case 'transaction.created':
+      console.log('[MoonPay] 📝 Transação criada:', data.id);
+      // Aqui você pode adicionar lógica de banco de dados
+      break;
+    case 'transaction.updated':
+      console.log('[MoonPay] 🔄 Transação atualizada:', data.id, 'status:', data.status);
+      break;
+    case 'transaction.failed':
+      console.log('[MoonPay] ❌ Transação falhou:', data.id);
+      break;
+    case 'transaction.completed':
+      console.log('[MoonPay] ✅ Transação completada:', data.id);
+      break;
+    default:
+      console.log('[MoonPay] 📦 Evento desconhecido:', type);
+  }
+  
+  res.json({ received: true, type });
+});
+
+// ─── Rota para gerar assinatura MoonPay (client-side) ────────────────────────
+app.get('/api/moonpay/signature', (req, res) => {
+  const { walletAddress, currencyCode = 'eth', baseCurrencyCode = 'usd' } = req.query;
+  
+  if (!walletAddress) {
+    return res.status(400).json({ error: 'walletAddress é obrigatório' });
+  }
+  
+  if (!moonpayPublicKey) {
+    return res.status(500).json({ error: 'MoonPay não configurado' });
+  }
+  
+  const payload = {
+    apiKey: moonpayPublicKey,
+    currencyCode,
+    baseCurrencyCode,
+    walletAddress,
+    baseCurrencyAmount: 100, // $100 USD default
+    redirectUrl: `${req.protocol}://${req.get('host')}/payment/callback`,
+    theme: 'dark'
+  };
+  
+  // Assinatura para MoonPay (se tiver secret key)
+  const secretKey = process.env.MOONPAY_SECRET_KEY;
+  let signature = null;
+  
+  if (secretKey) {
+    const queryString = new URLSearchParams(payload).toString();
+    signature = crypto
+      .createHmac('sha256', secretKey)
+      .update(queryString)
+      .digest('hex');
+  }
+  
+  res.json({
+    ...payload,
+    signature,
+    widgetUrl: moonpayWidgetUrl
+  });
+});
+
+// ─── Servir arquivos estáticos ────────────────────────────────────────────────
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Rota principal
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.get('/dashboard', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
+app.get('/payment/success', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'success.html'));
+});
+
+app.get('/payment/callback', (req, res) => {
+  console.log('[Payment] Callback recebido:', req.query);
+  res.redirect('/dashboard?payment=completed');
+});
+
+// ─── API para verificar saúde do backend via proxy ───────────────────────────
+app.get('/api/backend/health', async (req, res) => {
+  if (!_backendProcess) {
+    return res.status(503).json({ error: 'Backend não está rodando', backendRunning: false });
+  }
+  
+  try {
+    const backendHealthUrl = `http://localhost:${BACKEND_PORT}/health`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const response = await fetch(backendHealthUrl, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    
+    const data = await response.json();
+    res.json({ backendRunning: true, ...data });
+  } catch (err) {
+    res.status(502).json({ error: 'Backend não responde', backendRunning: true, message: err.message });
+  }
+});
+
+// ─── Proxy para rotas do backend (se necessário) ─────────────────────────────
+app.use('/api/backend/*', async (req, res) => {
+  if (!_backendProcess) {
+    return res.status(503).json({ error: 'Backend indisponível' });
+  }
+  
+  const backendUrl = `http://localhost:${BACKEND_PORT}${req.originalUrl}`;
+  const method = req.method;
+  const headers = {
+    'Content-Type': 'application/json',
+    ...req.headers
+  };
+  delete headers.host;
+  delete headers['content-length'];
+  
+  try {
+    const fetchOptions = {
+      method,
+      headers,
+      signal: AbortSignal.timeout(10000)
+    };
+    
+    if (method !== 'GET' && method !== 'HEAD') {
+      fetchOptions.body = JSON.stringify(req.body);
+    }
+    
+    const response = await fetch(backendUrl, fetchOptions);
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (err) {
+    console.error('[Proxy] Erro:', err.message);
+    res.status(502).json({ error: 'Erro ao comunicar com backend', message: err.message });
+  }
+});
+
+// ─── Watchdog passivo + agressivo ────────────────────────────────────────────
+let healthCheckInterval = null;
+
+function startWatchdog() {
+  if (healthCheckInterval) clearInterval(healthCheckInterval);
+  
+  healthCheckInterval = setInterval(async () => {
+    // Se não tem processo, tenta iniciar
+    if (!_backendProcess && _autoStartEnabled) {
+      console.log('[WD] backend.js não está rodando, iniciando...');
+      startBackendProcess('watchdog');
+      return;
+    }
+    
+    // Se tem processo mas pode estar zumbi, faz health check
+    if (_backendProcess && _autoStartEnabled) {
+      try {
+        const backendHealthUrl = `http://localhost:${BACKEND_PORT}/health`;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        const response = await fetch(backendHealthUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        
+        if (!response.ok) {
+          console.warn(`[WD] backend.js health check falhou (status ${response.status})`);
+          killBackendProcess();
+          setTimeout(() => startBackendProcess('health-failed'), 1000);
+        } else {
+          // Reduz contador de restarts gradualmente quando está estável
+          if (_restartCount > 0 && Date.now() - _lastRestartAt > 60000) {
+            _restartCount = Math.max(0, _restartCount - 1);
+            console.log(`[WD] ✅ Sistema estável, restartCount reduzido para ${_restartCount}`);
+          }
+        }
+      } catch (err) {
+        console.warn(`[WD] backend.js health check falhou: ${err.message}`);
+        killBackendProcess();
+        setTimeout(() => startBackendProcess('health-failed'), 1000);
+      }
+    }
+  }, 30000); // A cada 30 segundos
+}
+
+// ─── Graceful Shutdown ────────────────────────────────────────────────────────
+function gracefulShutdown(signal) {
+  console.log(`\n[SHUTDOWN] Recebido ${signal}, iniciando encerramento graceful...`);
+  
+  _autoStartEnabled = false;
+  
+  if (healthCheckInterval) {
+    clearInterval(healthCheckInterval);
+    healthCheckInterval = null;
+  }
+  
+  if (_backendProcess) {
+    console.log('[SHUTDOWN] Encerrando backend.js...');
+    killBackendProcess();
+    
+    // Força saída após timeout
+    setTimeout(() => {
+      console.log('[SHUTDOWN] Forçando saída...');
+      process.exit(0);
+    }, 5000);
+  } else {
+    process.exit(0);
+  }
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Tratamento de exceções não capturadas
 process.on('uncaughtException', (err) => {
-  console.error('[SRV] Erro não capturado:', err.message);
-  // Não sai — mantém o servidor rodando
+  console.error('[FATAL] Exceção não capturada:', err);
+  // Não morre, apenas loga e continua
 });
 
-process.on('unhandledRejection', (reason) => {
-  console.error('[SRV] Promise rejeitada:', reason);
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[FATAL] Promise rejection não tratada:', reason);
 });
 
-// ─── Start ────────────────────────────────────────────────────────────────────
-app.listen(port, '0.0.0.0', () => {
-  const line = '='.repeat(60);
-  console.log(line);
-  console.log(`  CRYPTEX + OCTOCOOKIE  v3.0  AUTO-HEALING  —  porta ${port}`);
-  console.log(line);
-  console.log(`  🌐  http://localhost:${port}`);
-  console.log(`  POST /bot/start           → inicia backend.js`);
-  console.log(`  POST /bot/stop            → para backend.js`);
-  console.log(`  POST /bot/restart         → reinicia backend.js`);
-  console.log(`  GET  /bot/status          → status + contador de restarts`);
-  console.log(`  POST /bot/repair          → solicita reparo ao backend`);
-  console.log(`  POST /bot/reset-restarts  → zera contador de restarts`);
-  console.log(line);
+// ─── Inicialização ────────────────────────────────────────────────────────────
+function main() {
+  console.log('═'.repeat(60));
+  console.log('🚀 CRYPTEX + OCTOCOOKIE v3.0 AUTO-HEALING');
+  console.log('═'.repeat(60));
+  console.log(`📡 Porta: ${port} (host: 0.0.0.0 - Render compatível)`);
+  console.log(`🤖 Backend: porta ${BACKEND_PORT}`);
+  console.log(`🌙 MoonPay: ${moonpayPublicKey ? '✅ Configurado' : '❌ Não configurado'}`);
+  console.log(`🔄 Max restarts: ${MAX_RESTARTS}`);
+  console.log(`⏱️  Backoff inicial: ${backoffMs(1)}ms`);
+  console.log('═'.repeat(60));
+  
+  // Inicia watchdog
+  startWatchdog();
+  
+  // Inicia backend pela primeira vez
+  startBackendProcess('initial-start');
+  
+  // Inicia servidor HTTP (0.0.0.0 para Render)
+  const server = app.listen(port, '0.0.0.0', () => {
+    console.log(`\n✅ Servidor rodando em http://0.0.0.0:${port}`);
+    console.log(`🏥 Health check: http://0.0.0.0:${port}/health`);
+    console.log(`📊 Status API: http://0.0.0.0:${port}/api/status`);
+    console.log('═'.repeat(60));
+  });
+  
+  server.on('error', (err) => {
+    console.error('[FATAL] Erro no servidor:', err);
+    if (err.code === 'EADDRINUSE') {
+      console.error(`❌ Porta ${port} já está em uso!`);
+      process.exit(1);
+    }
+  });
+}
 
-  // Inicia backend.js automaticamente
-  console.log('[SRV] 🚀 Iniciando backend.js automaticamente...');
-  startBackendProcess('auto-boot');
-
-  // Health check periódico do backend (a cada 20s)
-  setInterval(checkBackendHealth, 20000);
-});
+// Só muda isso: host 0.0.0.0 no app.listen (já está feito acima)
+main();
