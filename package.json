@@ -1,19 +1,17 @@
 {
-  "name": "octocookie-api",
-  "version": "2.0.0",
-  "description": "CRYPTEX + OCTOCOOKIE Server",
-  "main": "server.js",
+  "name": "cryptex",
+  "version": "1.0.0",
   "scripts": {
-    "start": "node server.js",
-    "demo": "node server.js --demo"
+    "start": "node servidor.js",
+    "backend": "node backend.js",
+    "dev": "concurrently \"npm run backend\" \"npm run start\""
   },
   "dependencies": {
-    "cors": "^2.8.6",
-    "dotenv": "^16.6.1",
-    "express": "^4.22.2"
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3"
   },
-  "engines": {
-    "node": ">=14.0.0"
-  },
-  "license": "MIT"
+  "devDependencies": {
+    "concurrently": "^7.6.0"
+  }
 }
