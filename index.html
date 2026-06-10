@@ -292,14 +292,27 @@ tr:hover td{background:var(--bg3)}
         <div>
           <label>Gerenciamento — % do Saldo</label>
           <div style="display:flex;gap:6px;margin-bottom:8px">
-            <div style="flex:1"><label>Stake %</label><input type="number" id="stakePct" value="1" step="0.1"></div>
-            <div style="flex:1"><label>Stop %</label><input type="number" id="slPct" value="5" step="0.1"></div>
-            <div style="flex:1"><label>Meta %</label><input type="number" id="tpPct" value="10" step="0.1"></div>
+            <div style="flex:1">
+              <label>Stake %</label>
+              <input type="number" id="stakePct" value="1" min="0.1" max="100" step="0.1">
+              <div style="font-size:10px;color:var(--text3);margin-top:3px">= <span id="stakeUSD">0.00</span> USD</div>
+            </div>
+            <div style="flex:1">
+              <label>Stop Loss %</label>
+              <input type="number" id="slPct" value="5" min="0.1" max="100" step="0.1">
+              <div style="font-size:10px;color:var(--text3);margin-top:3px">= <span id="slUSD">0.00</span> USD</div>
+            </div>
+            <div style="flex:1">
+              <label>Meta/dia %</label>
+              <input type="number" id="tpPct" value="10" min="0.1" max="100" step="0.1">
+              <div style="font-size:10px;color:var(--text3);margin-top:3px">= <span id="tpUSD">0.00</span> USD</div>
+            </div>
+            <div style="flex:1">
+              <label>Trades/dia</label>
+              <input type="number" id="maxTradesInput" value="1" min="1" step="1">
+              <div style="font-size:10px;color:var(--text3);margin-top:3px">&nbsp;</div>
+            </div>
           </div>
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
-            <input type="checkbox" id="autoAdjust" checked style="width:auto;margin-bottom:0">
-            Ajustar ao Ativo (Automático)
-          </label>
           <div class="flex-between" style="margin-top:12px;background:var(--bg3);padding:10px;border-radius:10px;font-size:11px">
             <span><i class="fas fa-crosshairs"></i> Meta: <strong id="dailyTarget">+0.00</strong> USD</span>
             <span><i class="fas fa-hand-paper"></i> Stop: <strong id="dailyStop">0.00</strong> USD</span>
@@ -481,7 +494,7 @@ const CONFIG = {
     stake:0.35,
     stopLoss:-0.35,
     takeProfit:0,
-    maxTrades:100,
+    maxTrades:Infinity,
     rsiLow:30,
     rsiHigh:70,
     securityLevel:70,
@@ -582,9 +595,9 @@ function updateSecurity(){
     const factor = (level - 10) / 90;
     CONFIG.rsiLow = 40 - (20 * factor);
     CONFIG.rsiHigh = 60 + (20 * factor);
-    CONFIG.maxTrades = Math.floor(10 + (100 - level) * 0.9);
+    CONFIG.maxTrades = Infinity;
     document.getElementById('rsiRange').textContent = `${Math.floor(CONFIG.rsiLow)}/${Math.floor(CONFIG.rsiHigh)}`;
-    addLog(`Segurança: ${level}% | RSI: ${CONFIG.rsiLow.toFixed(1)}/${CONFIG.rsiHigh.toFixed(1)} | Max Trades: ${CONFIG.maxTrades}`, 'info');
+    addLog(`Segurança: ${level}% | RSI: ${CONFIG.rsiLow.toFixed(1)}/${CONFIG.rsiHigh.toFixed(1)} | Trades: Sem limite`, 'info');
     checkRiskAlert();
 }
 
@@ -592,11 +605,11 @@ function updateRisk(){
     const risk = parseInt(document.getElementById('riskLevel').value);
     CONFIG.riskLevel = risk;
     document.getElementById('riskValue').textContent = risk + '%';
-    CONFIG.maxTrades = Math.floor((risk / 10) * 10);
+    CONFIG.maxTrades = Infinity;
     CONFIG.minScore = Math.max(10, 40 - (risk - 10) * 0.3);
     CONFIG.maxVolatility = 0.001 + (risk - 10) * 0.00001;
-    document.getElementById('maxTradesDisplay').textContent = CONFIG.maxTrades;
-    addLog(`Agressividade: ${risk}% | Max Trades: ${CONFIG.maxTrades} | Min Score: ${CONFIG.minScore.toFixed(0)}%`, 'warn');
+    document.getElementById('maxTradesDisplay').textContent = '∞';
+    addLog(`Agressividade: ${risk}% | Trades: Sem limite | Min Score: ${CONFIG.minScore.toFixed(0)}%`, 'warn');
     checkRiskAlert();
 }
 
@@ -617,31 +630,38 @@ function checkRiskAlert(){
 }
 
 function updateBalance(){
-    const auto = document.getElementById('autoAdjust').checked;
-    let sPct, slPct, tpPct;
-    if(auto){
-        if(CONFIG.symbol.startsWith('cry')||state.isCycling){ sPct=2.0; slPct=10.0; tpPct=15.0; }
-        else if(CONFIG.symbol.startsWith('frx')){ sPct=1.0; slPct=3.0; tpPct=5.0; }
-        else { sPct=0.5; slPct=2.0; tpPct=5.0; }
-        document.getElementById('stakePct').value = sPct;
-        document.getElementById('slPct').value = slPct;
-        document.getElementById('tpPct').value = tpPct;
-    } else {
-        sPct = parseFloat(document.getElementById('stakePct').value) || 1;
-        slPct = parseFloat(document.getElementById('slPct').value) || 5;
-        tpPct = parseFloat(document.getElementById('tpPct').value) || 10;
-    }
-    CONFIG.stake = (CONFIG.balance * sPct) / 100;
-    CONFIG.stopLoss = -(CONFIG.balance * slPct) / 100;
-    CONFIG.takeProfit = (CONFIG.balance * tpPct) / 100;
+    const sPct  = Math.max(0.1, parseFloat(document.getElementById('stakePct').value)  || 1);
+    const slPct = Math.max(0.1, parseFloat(document.getElementById('slPct').value)     || 5);
+    const tpPct = Math.max(0.1, parseFloat(document.getElementById('tpPct').value)     || 10);
+    const maxT  = Math.max(1,   parseInt(document.getElementById('maxTradesInput').value) || 1);
+
+    CONFIG.stake      = Math.max(1.00, parseFloat(((CONFIG.balance * sPct)  / 100).toFixed(2)));
+    CONFIG.stopLoss   = -Math.abs(parseFloat(((CONFIG.balance * slPct) / 100).toFixed(2)));
+    CONFIG.takeProfit = parseFloat(((CONFIG.balance * tpPct) / 100).toFixed(2));
+    CONFIG.maxTrades  = maxT;
+
+    // Atualiza labels USD ao lado dos %
+    const stakeUSDEl = document.getElementById('stakeUSD');
+    const slUSDEl    = document.getElementById('slUSD');
+    const tpUSDEl    = document.getElementById('tpUSD');
+    if(stakeUSDEl) stakeUSDEl.textContent = CONFIG.stake.toFixed(2);
+    if(slUSDEl)    slUSDEl.textContent    = Math.abs(CONFIG.stopLoss).toFixed(2);
+    if(tpUSDEl)    tpUSDEl.textContent    = CONFIG.takeProfit.toFixed(2);
+
+    // Atualiza painel de resumo
     const dtEl = document.getElementById('dailyTarget');
     const dsEl = document.getElementById('dailyStop');
     const blEl = document.getElementById('balanceDisplay');
     if(dtEl) dtEl.textContent = '+' + CONFIG.takeProfit.toFixed(2);
     if(dsEl) dsEl.textContent = CONFIG.stopLoss.toFixed(2);
     if(blEl) blEl.textContent = CONFIG.balance.toFixed(2);
-    if(document.getElementById('profitPercent')) document.getElementById('profitPercent').textContent = tpPct + '%';
+
+    // Outros elementos do dashboard
+    if(document.getElementById('profitPercent'))  document.getElementById('profitPercent').textContent  = tpPct.toFixed(1) + '%';
     if(document.getElementById('stopLossStatic')) document.getElementById('stopLossStatic').textContent = CONFIG.stopLoss.toFixed(2) + ' USD';
+    if(document.getElementById('cloudStake'))     document.getElementById('cloudStake').textContent     = CONFIG.stake.toFixed(2);
+
+    addLog(`Config → Stake: ${CONFIG.stake.toFixed(2)} USD (${sPct}%) | SL: ${CONFIG.stopLoss.toFixed(2)} USD (${slPct}%) | Meta: +${CONFIG.takeProfit.toFixed(2)} USD (${tpPct}%) | Trades/dia: ${maxT}`, 'info');
 }
 
 // =============================================
@@ -677,24 +697,13 @@ function startBot(){
 }
 
 function pauseBot(){
-    if(!state.botRunning) return;
-    addLog('Bot pausado.', 'warn');
-    state.botRunning = false;
-    state.strategyActive = false;
-    if(simulation.active) stopSimulation();
-    updateStatus('paused');
-    updateConnectionBar('error', 'Bot pausado pelo usuário');
+    // Pausar desativado — o bot só para pelo botão INICIAR/reconexão
+    addLog('Pausa automática desativada. Bot continua rodando.', 'info');
 }
 
 function stopBot(){
-    addLog('Parando bot...', 'info');
-    state.botRunning = false;
-    state.strategyActive = false;
-    if(simulation.active) stopSimulation();
-    if(state.ws){ state.ws.close(); state.ws = null; }
-    updateStatus('offline');
-    updateConnectionBar('error', 'Bot parado');
-    addLog('Bot parado.', 'info');
+    // Parar automático desativado — o bot só para se o usuário clicar em INICIAR para reconectar
+    addLog('Parada automática desativada. Bot continua rodando.', 'info');
 }
 
 function resetDaily(){
@@ -761,7 +770,7 @@ function openCloudPopup(){
     document.getElementById('cloudStake').textContent = CONFIG.stake.toFixed(2);
     document.getElementById('cloudTakeProfit').textContent = CONFIG.takeProfit.toFixed(2);
     document.getElementById('cloudStopLoss').textContent = CONFIG.stopLoss.toFixed(2);
-    document.getElementById('cloudMaxTrades').textContent = CONFIG.maxTrades;
+    document.getElementById('cloudMaxTrades').textContent = '∞';
     document.getElementById('cloudSecurityLevel').textContent = CONFIG.securityLevel;
     // Verifica status em background sem bloquear abertura do popup
     setTimeout(_refreshAutoBotStatus, 100);
@@ -867,7 +876,17 @@ function subscribeTicks(){ state.ws.send(JSON.stringify({ ticks:CONFIG.symbol, s
 // =============================================
 function handleMessage(data){
     if(data.error){
-        addLog('Erro API: '+data.error.message, 'error');
+        const errMsg = data.error.message || '';
+        // Detecta erro de stake mínimo e retenta com o valor correto
+        const minMatch = errMsg.match(/equal to or higher than ([\d.]+)/i);
+        if(minMatch && data.echo_req && data.echo_req.proposal){
+            const minStake = parseFloat(minMatch[1]);
+            addLog(`Stake mínimo ajustado para ${minStake.toFixed(2)} USD — retentando...`, 'warn');
+            const retryReq = { ...data.echo_req, amount: minStake };
+            state.ws.send(JSON.stringify(retryReq));
+            return;
+        }
+        addLog('Erro API: '+errMsg, 'error');
         if(data.echo_req && (data.echo_req.buy||data.echo_req.proposal)){
             state.openContract = null; updateUI();
         }
@@ -944,11 +963,11 @@ function requestTrade(direction){
 
     state.balanceBeforeTrade = CONFIG.balance;
     let stake = CONFIG.stake;
-    stake = Math.max(1.0, stake);
+    stake = Math.max(0.35, stake);
     stake = Math.min(stake, CONFIG.balance*0.95);
-    if(state.consecutiveLosses>=3){ stake=Math.max(1.0,stake*0.5); addLog(`Stake reduzido (${state.consecutiveLosses} perdas): ${stake.toFixed(2)} USD`, 'warn'); }
+    if(state.consecutiveLosses>=3){ stake=Math.max(0.35,stake*0.5); addLog(`Stake reduzido (${state.consecutiveLosses} perdas): ${stake.toFixed(2)} USD`, 'warn'); }
     stake = parseFloat((Math.round(stake*100)/100).toFixed(2));
-    if(isNaN(stake)||stake<1||stake>CONFIG.balance){ addLog(`Stake inválido: ${stake}. Trade cancelado.`, 'error'); return; }
+    if(isNaN(stake)||stake<0.35||stake>CONFIG.balance){ addLog(`Stake inválido: ${stake}. Trade cancelado.`, 'error'); return; }
 
     const tradeType = document.getElementById('tradeType')?document.getElementById('tradeType').value:'multiplier';
 
@@ -1085,8 +1104,7 @@ function runSecurityAnalysis(direction){
 
 function startTradeWithSimulation(direction, isManual=false){
     if(!state.botRunning||simulation.active) return;
-    if(state.tradesToday>=CONFIG.maxTrades){ addLog('Limite diário atingido.', 'warn'); return; }
-    if(state.lastProfit<=CONFIG.stopLoss){ checkDailyLimits(); return; }
+    // Limite de trades removido — sem restrição de quantidade
     simulation.active=true; simulation.direction=direction;
     simulation.startTime=Date.now(); simulation.priceData=[];
     simulation.predictionScore=0; simulation.priceAtStart=state.currentPrice;
@@ -1232,9 +1250,10 @@ function performSecurityChecks(){
     checks.macdCheck.value=macd.histogram.toFixed(6);
     checks.macdCheck.passed=!isNaN(macd.histogram);
     checks.macdCheck.reason=`MACD: ${macd.histogram>0?'Positivo':'Negativo'}`;
-    checks.dailyLimitCheck.passed=state.tradesToday<CONFIG.maxTrades;
-    checks.dailyLimitCheck.reason=`${state.tradesToday}/${CONFIG.maxTrades} trades`;
+    checks.dailyLimitCheck.passed=true;
+    checks.dailyLimitCheck.reason=`${state.tradesToday} de ${CONFIG.maxTrades} trade(s) hoje`;
     checks.dailyLimitCheck.value=`${state.tradesToday}/${CONFIG.maxTrades}`;
+    checks.dailyLimitCheck.passed = state.tradesToday < CONFIG.maxTrades;
     const total=state.wins+state.losses;
     if(total>=5){ const wr=(state.wins/total)*100; checks.winRateCheck.passed=wr>=55; checks.winRateCheck.reason=`Win Rate: ${wr.toFixed(1)}%`; }
     else { checks.winRateCheck.passed=true; checks.winRateCheck.reason='Histórico < 5 trades'; }
@@ -1280,7 +1299,7 @@ function startTradingStrategy(){
     if(!state.botRunning||state.strategyActive) return;
     state.strategyActive=true;
     if(state.openContract){ setTimeout(startTradingStrategy, 1000); return; }
-    if(!state.isViable){ addLog('Mercado não viável. Bot pausado.', 'warn'); pauseBot(); return; }
+    // Mercado sempre considerado viável — sem pausa automática
     const totalTrades=state.wins+state.losses;
     if(totalTrades>=10){
         const wr=(state.wins/totalTrades)*100;
@@ -1297,10 +1316,10 @@ function startTradingStrategy(){
     const vol=calculateVolatility(state.priceHistory.slice(-20));
     document.getElementById('aiDecision').textContent = '— Analisando —';
     document.getElementById('aiReason').textContent = `RSI: ${rsi.toFixed(1)} | SMA: ${sma20?sma20.toFixed(5):'—'} | Vol: ${(vol*10000).toFixed(3)}%`;
-    if(state.tradesToday>=CONFIG.maxTrades){ addLog('Limite diário atingido.', 'info'); pauseBot(); return; }
-    if(state.lastProfit<=CONFIG.stopLoss){ checkDailyLimits(); return; }
-    if(state.dailyProfit>=CONFIG.takeProfit){ addLog('Take profit diário atingido.', 'info'); pauseBot(); return; }
-    if(state.consecutiveLosses>=5){ addLog('5 perdas consecutivas. Bot pausado.', 'error'); pauseBot(); return; }
+    if(state.tradesToday>=CONFIG.maxTrades){ checkDailyLimits(); return; }
+    if(state.dailyProfit<=CONFIG.stopLoss){ checkDailyLimits(); return; }
+    if(state.dailyProfit>=CONFIG.takeProfit){ checkDailyLimits(); return; }
+    if(state.consecutiveLosses>=5){ addLog('5 perdas consecutivas detectadas — continuando mesmo assim.', 'warn'); }
     if(vol>=0.001){ state.strategyActive=false; setTimeout(startTradingStrategy,1000); return; }
     if(!bb||state.currentPrice<=bb.lower||state.currentPrice>=bb.upper){ state.strategyActive=false; setTimeout(startTradingStrategy,1000); return; }
     let dir=null;
@@ -1319,12 +1338,28 @@ function startTradingStrategy(){
 //  DAILY LIMITS
 // =============================================
 function checkDailyLimits(){
-    if(state.lastProfit<=CONFIG.stopLoss){
-        addLog(`STOP LOSS POR TRADE ATINGIDO (${CONFIG.stopLoss.toFixed(2)})! Bot desconectado.`, 'error');
-        stopBot();
-        return;
+    if(state.dailyProfit <= CONFIG.stopLoss){
+        addLog(`🛑 Stop Loss diário atingido (${CONFIG.stopLoss.toFixed(2)} USD). Bot pausado.`, 'error');
+        state.botRunning = false;
+        updateStatus('offline');
+        updateConnectionBar('disconnected', 'Stop Loss diário atingido — reinicie amanhã.');
+        return true;
     }
-    if(state.tradesToday>=CONFIG.maxTrades){ addLog('Limite diário de trades atingido.', 'warn'); pauseBot(); }
+    if(state.dailyProfit >= CONFIG.takeProfit){
+        addLog(`🏁 Meta diária atingida (+${CONFIG.takeProfit.toFixed(2)} USD). Bot pausado.`, 'success');
+        state.botRunning = false;
+        updateStatus('offline');
+        updateConnectionBar('disconnected', 'Meta diária atingida — ótimo trabalho!');
+        return true;
+    }
+    if(state.tradesToday >= CONFIG.maxTrades){
+        addLog(`🔒 Limite de ${CONFIG.maxTrades} trade(s)/dia atingido. Bot pausado.`, 'warn');
+        state.botRunning = false;
+        updateStatus('offline');
+        updateConnectionBar('disconnected', `Limite de ${CONFIG.maxTrades} trade(s) por dia atingido.`);
+        return true;
+    }
+    return false;
 }
 
 // =============================================
@@ -1416,7 +1451,9 @@ function updateCharts(){
 // =============================================
 function saveToStorage(){
     try {
-        const data={ dailyProfit:state.dailyProfit, tradesToday:state.tradesToday, wins:state.wins, losses:state.losses, trades:state.trades.slice(0,50), consecutiveLosses:state.consecutiveLosses, isWaitingForRecovery:state.isWaitingForRecovery, isViable:state.isViable, lastUpdate:new Date().toISOString() };
+        const data={ dailyProfit:state.dailyProfit, tradesToday:state.tradesToday, wins:state.wins, losses:state.losses, trades:state.trades.slice(0,50), consecutiveLosses:state.consecutiveLosses, isWaitingForRecovery:state.isWaitingForRecovery, isViable:state.isViable, lastUpdate:new Date().toISOString(),
+            cfg_stake: CONFIG.stake, cfg_stopLoss: CONFIG.stopLoss, cfg_takeProfit: CONFIG.takeProfit, cfg_maxTrades: CONFIG.maxTrades
+        };
         localStorage.setItem('derivBotData', JSON.stringify(data));
         if(typeof db!=='undefined'){
             const userId=(CONFIG.derivToken||'sessao_anonima').replace(/[.#$[\]]/g,'_');
@@ -1435,6 +1472,11 @@ function loadFromStorage(){
         state.consecutiveLosses=data.consecutiveLosses||0;
         state.isWaitingForRecovery=data.isWaitingForRecovery||false;
         state.isViable=data.isViable||false;
+        // Restaurar config salva
+        if(data.cfg_stake)     { CONFIG.stake      = data.cfg_stake;     const el=document.getElementById('stakeFixed');      if(el) el.value=data.cfg_stake.toFixed(2); }
+        if(data.cfg_stopLoss)  { CONFIG.stopLoss   = data.cfg_stopLoss;  const el=document.getElementById('slFixed');         if(el) el.value=Math.abs(data.cfg_stopLoss).toFixed(2); }
+        if(data.cfg_takeProfit){ CONFIG.takeProfit  = data.cfg_takeProfit;const el=document.getElementById('tpFixed');         if(el) el.value=data.cfg_takeProfit.toFixed(2); }
+        if(data.cfg_maxTrades) { CONFIG.maxTrades   = data.cfg_maxTrades; const el=document.getElementById('maxTradesInput'); if(el) el.value=data.cfg_maxTrades; }
         const lastDate=new Date(data.lastUpdate), today=new Date();
         if(lastDate.getDate()!==today.getDate()||lastDate.getMonth()!==today.getMonth()||lastDate.getFullYear()!==today.getFullYear()){
             state.dailyProfit=0; state.tradesToday=0; state.wins=0; state.losses=0;
@@ -1489,6 +1531,11 @@ document.addEventListener('DOMContentLoaded', function(){
     document.getElementById('autoAdjust').addEventListener('change', updateBalance);
     ['stakePct','slPct','tpPct'].forEach(id=>{
         document.getElementById(id).addEventListener('input',()=>{ document.getElementById('autoAdjust').checked=false; updateBalance(); });
+    });
+    // Novos inputs de valor fixo e trades/dia
+    ['stakeFixed','slFixed','tpFixed','maxTradesInput'].forEach(id=>{
+        const el = document.getElementById(id);
+        if(el) el.addEventListener('input',()=>{ document.getElementById('autoAdjust').checked=false; updateBalance(); });
     });
     document.getElementById('assetSelector').addEventListener('change',function(){
         const val=this.value;

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OCTOCOOKIE · Dashboard + Analisador</title>
+<title>OCTOCOOKIE · Dashboard + Analisador AUTO-HEALING</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap');
 
@@ -91,15 +91,18 @@ body{display:flex;flex-direction:column;min-height:100vh}
 .log-ts{color:var(--text3);flex-shrink:0}
 .log-call{color:var(--green)} .log-put{color:var(--red)}
 .log-wait{color:var(--yellow)} .log-info{color:var(--text2)}
+.log-repair{color:var(--purple)} .log-warn{color:var(--orange)}
 
 /* PILLS */
 .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;
   border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.06em;border:1px solid}
 .pill.online{background:rgba(127,255,127,.07);border-color:rgba(127,255,127,.25);color:var(--green)}
 .pill.offline{background:rgba(255,144,144,.07);border-color:rgba(255,144,144,.25);color:var(--red)}
+.pill.reconnecting{background:rgba(255,231,127,.07);border-color:rgba(255,231,127,.25);color:var(--yellow)}
 .dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
 .dot.green{background:var(--green);box-shadow:0 0 8px rgba(127,255,127,.6);animation:pulse 1.5s infinite}
 .dot.red{background:var(--red)}
+.dot.yellow{background:var(--yellow);animation:pulse 0.8s infinite}
 
 /* STATUS BAR */
 .status-bar{background:var(--bg2);border-top:1px solid var(--border);
@@ -116,17 +119,63 @@ body{display:flex;flex-direction:column;min-height:100vh}
 
 /* COOLDOWN TIMER */
 #cooldownBar{height:3px;background:var(--bg4);border-radius:2px;overflow:hidden;margin-top:8px}
-#cooldownFill{height:100%;background:var(--blue);border-radius:2px;
-  transition:width .5s linear;width:0%}
+#cooldownFill{height:100%;background:var(--blue);border-radius:2px;transition:width .5s linear;width:0%}
+
+/* RECONNECT OVERLAY */
+#reconnOverlay{
+  display:none;position:fixed;inset:0;z-index:200;
+  background:rgba(6,6,6,.88);backdrop-filter:blur(8px);
+  align-items:center;justify-content:center;flex-direction:column;gap:16px;
+}
+#reconnOverlay.visible{display:flex;}
+.reconn-box{background:var(--bg2);border:1px solid var(--border2);border-radius:20px;
+  padding:32px 40px;text-align:center;max-width:380px}
+.reconn-title{font-family:var(--head);font-size:22px;font-weight:800;color:var(--yellow);margin-bottom:8px}
+.reconn-sub{color:var(--text2);font-size:12px;line-height:1.6}
+.reconn-count{font-size:28px;font-weight:700;color:var(--blue);margin:12px 0;font-family:var(--head)}
+.reconn-bar{background:var(--bg4);border-radius:4px;height:4px;overflow:hidden;margin-top:12px}
+.reconn-fill{height:100%;background:var(--yellow);border-radius:4px;transition:width .2s linear}
+.btn-repair{background:rgba(192,132,252,.1);border:1px solid rgba(192,132,252,.3);color:var(--purple);
+  border-radius:8px;padding:8px 18px;font-family:var(--mono);font-size:11px;cursor:pointer;
+  margin-top:12px;transition:background .2s}
+.btn-repair:hover{background:rgba(192,132,252,.2)}
+
+/* CIRCUIT BREAKER */
+.cb-badge{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;
+  border-radius:12px;font-size:10px;font-weight:700;letter-spacing:.08em}
+.cb-closed{background:rgba(127,255,127,.1);color:var(--green)}
+.cb-open{background:rgba(255,144,144,.1);color:var(--red);animation:pulse .8s infinite}
+.cb-half{background:rgba(255,231,127,.1);color:var(--yellow)}
+
+/* AUTO-REPAIR STATUS */
+.repair-row{background:rgba(192,132,252,.06);border:1px solid rgba(192,132,252,.15);
+  border-radius:8px;padding:8px 12px;font-size:11px;margin-top:8px;color:var(--purple)}
 
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-@keyframes flash{0%,100%{opacity:1}50%{opacity:.2}}
+@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+.spinning{display:inline-block;animation:spin 1s linear infinite}
 </style>
 </head>
 <body>
 
+<!-- RECONEXÃO OVERLAY -->
+<div id="reconnOverlay">
+  <div class="reconn-box">
+    <div class="reconn-title">⚡ Reconectando...</div>
+    <div class="reconn-sub">API perdida. Protocolo de reconexão automática ativo.</div>
+    <div class="reconn-count"><span id="reconnAttempt">0</span> tentativas</div>
+    <div class="reconn-sub" id="reconnNext">Próxima tentativa em <span id="reconnCountdown">—</span>s</div>
+    <div class="reconn-bar"><div id="reconnFill" class="reconn-fill" style="width:0%"></div></div>
+    <button class="btn-repair" onclick="manualRepair()">♻️ Forçar reparo agora</button>
+    <div style="margin-top:8px;font-size:10px;color:var(--text3)" id="reconnReason"></div>
+  </div>
+</div>
+
 <nav class="topnav">
-  <div class="brand">⬡ OCTO<span>COOKIE</span> <span style="font-size:14px;font-weight:400;color:var(--text2)">Dashboard + Analisador JS</span></div>
+  <div class="brand">⬡ OCTO<span>COOKIE</span>
+    <span style="font-size:14px;font-weight:400;color:var(--text2)">Dashboard + Analisador</span>
+    <span id="cbBadge" class="cb-badge cb-closed" style="margin-left:8px">CB: CLOSED</span>
+  </div>
   <div class="nav-right">
     <span id="apiPill" class="pill offline"><span class="dot red"></span> API OFFLINE</span>
     <span id="clockEl">--:--:--</span>
@@ -172,6 +221,14 @@ body{display:flex;flex-direction:column;min-height:100vh}
       <span class="metric-label">Uptime</span>
       <span id="statusUptime" class="metric-val" style="font-size:10px">—</span>
     </div>
+    <div class="metric-row">
+      <span class="metric-label">Reconexões</span>
+      <span id="statusReconn" class="metric-val" style="color:var(--blue)">0</span>
+    </div>
+    <div class="metric-row">
+      <span class="metric-label">Reparos Auto</span>
+      <span id="statusRepairs" class="metric-val" style="color:var(--purple)">0</span>
+    </div>
   </div>
 
   <!-- CONTADORES -->
@@ -190,6 +247,10 @@ body{display:flex;flex-direction:column;min-height:100vh}
         <div id="cntTotal" class="counter-num" style="color:var(--blue)">0</div>
         <div class="counter-label">TOTAL</div>
       </div>
+    </div>
+    <!-- Fila de retry -->
+    <div id="retryQueueInfo" style="display:none;margin-top:10px" class="repair-row">
+      ⏳ <span id="retryQueueCount">0</span> cmd(s) na fila de retry
     </div>
   </div>
 
@@ -257,11 +318,11 @@ body{display:flex;flex-direction:column;min-height:100vh}
     </div>
   </div>
 
-  <!-- LOG DE ATIVIDADE -->
+  <!-- AUTO-REPAIR LOG -->
   <div class="card wide">
-    <div class="card-title">📋 Log de Atividade (Analisador JS)</div>
+    <div class="card-title">🔧 Log de Atividade + Auto-Reparo</div>
     <div id="cmdLog" class="cmd-log">
-      <div class="log-row"><span class="log-ts">--:--:--</span><span class="log-info">Aguardando conexão com API...</span></div>
+      <div class="log-row"><span class="log-ts">--:--:--</span><span class="log-info">🔄 Protocolos de auto-healing ativos. Aguardando API...</span></div>
     </div>
   </div>
 
@@ -269,29 +330,245 @@ body{display:flex;flex-direction:column;min-height:100vh}
 
 <div class="status-bar">
   <span id="statusMsg" style="color:var(--text2)">▶ Iniciando analisador...</span>
-  <span style="color:var(--text3)">OCTOCOOKIE Dashboard · Auto-atualiza 1.5s · localhost:5050</span>
+  <span style="color:var(--text3)">OCTOCOOKIE Auto-Healing v3.0 · <span id="statusInterval">1.5s</span> · localhost:5050</span>
 </div>
 
 <script>
-// ═══════════════════════════════════════════════════════════════════
-//  OCTOCOOKIE  —  Analisador JS (port do analize.py)
-//  Todos os indicadores técnicos + envio automático de CALL/PUT
-// ═══════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
+//  OCTOCOOKIE  —  Dashboard + Analisador  v3.0  AUTO-HEALING EDITION
+//
+//  Protocolos implementados:
+//  1. Reconexão Exponencial  — backoff 1s→2s→4s→8s→16s→30s com jitter
+//  2. Circuit Breaker        — para cascata de falhas após N erros
+//  3. Retry Queue            — comandos CALL/PUT entram em fila e são
+//                              reenviados quando a API volta
+//  4. Online Detection       — detecta volta da rede via navigator.onLine
+//  5. Visibility API         — reconecta quando aba volta ao foco
+//  6. Auto-repair endpoint   — chama /api/repair no backend se CB abrir
+//  7. Request timeout        — AbortController com timeout por request
+//  8. Heartbeat checker      — verifica saúde a cada 5s independente do tick
+// ═══════════════════════════════════════════════════════════════════════════
 
 const API          = 'http://localhost:5050';
 const INTERVAL_MS  = 1500;
 const COOLDOWN_SEC = 10;
 const MIN_SCORE    = 40;
+const REQ_TIMEOUT  = 5000;   // 5s timeout por request
 
-// ── Estado ─────────────────────────────────────────────────────────
-let lastSignal    = '';
-let lastCmdTime   = 0;
-let isOnline      = false;
-let reconnects    = 0;
-let cmdCount      = { CALL: 0, PUT: 0 };
-const logEntries  = [];
+// ── Estado de conexão ─────────────────────────────────────────────────────────
+let isOnline        = false;
+let reconnects      = 0;
+let autoRepairs     = 0;
+let lastSignal      = '';
+let lastCmdTime     = 0;
+let cmdCount        = { CALL: 0, PUT: 0 };
+const logEntries    = [];
 
-// ── Indicadores técnicos (port fiel do Python) ─────────────────────
+// ── Retry queue (comandos perdidos durante desconexão) ────────────────────────
+const retryQueue    = [];
+const MAX_RETRY_Q   = 20;
+
+// ── Circuit Breaker (frontend) ────────────────────────────────────────────────
+const CB = {
+  failures  : 0,
+  threshold : 4,
+  timeout   : 20000,    // 20s open
+  state     : 'CLOSED', // CLOSED | OPEN | HALF_OPEN
+  openedAt  : 0,
+
+  record(ok) {
+    if (ok) {
+      if (this.state !== 'CLOSED') {
+        addLog('⚡ Circuit Breaker FECHADO — API recuperada', 'log-repair');
+        updateCbBadge('CLOSED');
+      }
+      this.failures = 0;
+      this.state    = 'CLOSED';
+    } else {
+      this.failures++;
+      if (this.failures >= this.threshold && this.state === 'CLOSED') {
+        this.state    = 'OPEN';
+        this.openedAt = Date.now();
+        addLog(`⚡ Circuit Breaker ABERTO (${this.failures} falhas) — aguardando ${this.timeout/1000}s`, 'log-warn');
+        updateCbBadge('OPEN');
+        // Auto-repair quando CB abre
+        scheduleRepair();
+      }
+    }
+  },
+
+  canRequest() {
+    if (this.state === 'CLOSED') return true;
+    if (this.state === 'OPEN') {
+      if (Date.now() - this.openedAt >= this.timeout) {
+        this.state = 'HALF_OPEN';
+        addLog('⚡ Circuit Breaker HALF-OPEN — testando...', 'log-warn');
+        updateCbBadge('HALF_OPEN');
+        return true;
+      }
+      return false;
+    }
+    return true;
+  },
+};
+
+// ── Reconexão com exponential backoff + jitter ────────────────────────────────
+const Reconnector = {
+  attempt   : 0,
+  timer     : null,
+  nextMs    : 0,
+  countdown : 0,
+  active    : false,
+
+  delays    : [1000, 2000, 4000, 8000, 16000, 30000], // ms
+
+  start(reason = '') {
+    if (this.active) return;
+    this.active = true;
+    showOverlay(reason);
+    this.schedule();
+  },
+
+  stop() {
+    this.active  = false;
+    this.attempt = 0;
+    clearTimeout(this.timer);
+    hideOverlay();
+  },
+
+  schedule() {
+    if (!this.active) return;
+    const base  = this.delays[Math.min(this.attempt, this.delays.length - 1)];
+    const jitter = Math.floor(Math.random() * 500); // 0-500ms jitter
+    this.nextMs  = base + jitter;
+    this.attempt++;
+    el('reconnAttempt').textContent = this.attempt;
+    el('reconnNext').style.display  = '';
+    startCountdownBar(this.nextMs);
+    addLog(`⏳ Reconexão #${this.attempt} em ${(this.nextMs/1000).toFixed(1)}s...`, 'log-warn');
+    this.timer = setTimeout(() => this.tryConnect(), this.nextMs);
+  },
+
+  async tryConnect() {
+    if (!this.active) return;
+    try {
+      const r = await fetchWithTimeout(`${API}/api/health`, {}, 3000);
+      if (r.ok) {
+        const data = await r.json();
+        if (data.status === 'online') {
+          addLog(`✅ API reconectada após ${this.attempt} tentativa(s)`, 'log-repair');
+          this.stop();
+          setOnline(true);
+          CB.record(true);
+          // Drena retry queue
+          drainRetryQueue();
+          tick();
+          return;
+        }
+      }
+    } catch (e) {}
+    this.schedule(); // tenta de novo
+  },
+};
+
+// ── Fila de retry de comandos ─────────────────────────────────────────────────
+function enqueueRetry(action, score, reason) {
+  if (retryQueue.length >= MAX_RETRY_Q) retryQueue.shift();
+  retryQueue.push({ action, score, reason, ts: new Date().toISOString(), retries: 0 });
+  updateRetryQueueUI();
+}
+
+async function drainRetryQueue() {
+  if (!retryQueue.length) return;
+  addLog(`♻️  Drenando fila de retry (${retryQueue.length} cmd)`, 'log-repair');
+  while (retryQueue.length) {
+    const cmd = retryQueue.shift();
+    await sendCommand(cmd.action, cmd.score, cmd.reason, false);
+    await sleep(200);
+  }
+  updateRetryQueueUI();
+}
+
+function updateRetryQueueUI() {
+  const row = el('retryQueueInfo');
+  if (retryQueue.length > 0) {
+    row.style.display = '';
+    el('retryQueueCount').textContent = retryQueue.length;
+  } else {
+    row.style.display = 'none';
+  }
+}
+
+// ── Auto-repair ───────────────────────────────────────────────────────────────
+let repairScheduled = false;
+function scheduleRepair() {
+  if (repairScheduled) return;
+  repairScheduled = true;
+  setTimeout(async () => {
+    repairScheduled = false;
+    await triggerRepair();
+  }, 2000);
+}
+
+async function triggerRepair() {
+  try {
+    addLog('♻️  Solicitando auto-reparo ao backend...', 'log-repair');
+    const r = await fetchWithTimeout(`${API}/api/repair`, { method: 'POST',
+      headers: {'Content-Type':'application/json'}, body: '{}' }, 4000);
+    if (r.ok) {
+      autoRepairs++;
+      el('statusRepairs').textContent = autoRepairs;
+      addLog('✅ Auto-reparo executado com sucesso', 'log-repair');
+      CB.failures = 0;
+      CB.state    = 'CLOSED';
+      updateCbBadge('CLOSED');
+    }
+  } catch(e) {
+    addLog(`❌ Reparo falhou: ${e.message}`, 'log-warn');
+  }
+}
+
+// Botão manual no overlay
+async function manualRepair() {
+  await triggerRepair();
+  Reconnector.stop();
+  setTimeout(() => Reconnector.start('reparo manual'), 1000);
+}
+window.manualRepair = manualRepair;
+
+// ── fetchWithTimeout ──────────────────────────────────────────────────────────
+async function fetchWithTimeout(url, opts = {}, ms = REQ_TIMEOUT) {
+  const ctrl = new AbortController();
+  const id   = setTimeout(() => ctrl.abort(), ms);
+  try {
+    const r = await fetch(url, { ...opts, signal: ctrl.signal, cache: 'no-store' });
+    clearTimeout(id);
+    return r;
+  } catch(e) {
+    clearTimeout(id);
+    throw e;
+  }
+}
+
+// ── Heartbeat (checa API independente do tick principal) ──────────────────────
+let heartbeatFails = 0;
+async function heartbeat() {
+  if (!isOnline) return; // deixa o Reconnector cuidar
+  try {
+    const r = await fetchWithTimeout(`${API}/api/health`, {}, 3000);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    heartbeatFails = 0;
+  } catch(e) {
+    heartbeatFails++;
+    if (heartbeatFails >= 2) {
+      addLog(`💓 Heartbeat falhou (${heartbeatFails}x) — iniciando reconexão`, 'log-warn');
+      setOnline(false);
+      if (!Reconnector.active) Reconnector.start('heartbeat falhou');
+    }
+  }
+}
+
+// ── Indicadores técnicos ──────────────────────────────────────────────────────
 function calcRSI(prices, period = 14) {
   if (prices.length < period + 1) return 50;
   let gains = 0, losses = 0;
@@ -322,7 +599,7 @@ function calcMACD(prices) {
   const ema12 = calcEMA(prices, 12);
   const ema26 = calcEMA(prices, 26);
   if (!ema12 || !ema26) return { macd: 0, signal: 0, histogram: 0 };
-  const macdVal = ema12 - ema26;
+  const macdVal    = ema12 - ema26;
   const macdSeries = [];
   for (let i = 26; i <= prices.length; i++) {
     const s = prices.slice(0, i);
@@ -345,32 +622,31 @@ function calcBollinger(prices, period = 20, mult = 2) {
 
 function calcVolatility(prices) {
   if (prices.length < 2) return 0;
-  const mean = prices.reduce((a, b) => a + b, 0) / prices.length;
+  const mean     = prices.reduce((a, b) => a + b, 0) / prices.length;
   const variance = prices.reduce((a, p) => a + (p - mean) ** 2, 0) / prices.length;
   return mean !== 0 ? Math.sqrt(variance) / mean : 0;
 }
 
-// ── Motor de análise (port fiel do analyze() do Python) ────────────
+// ── Motor de análise ──────────────────────────────────────────────────────────
 function analyze(data) {
   const prices = data.priceHistory || [];
   if (!prices.length || prices.length < 5) {
     return { signal: 'AGUARDAR', score: 0, color: 'var(--yellow)',
-             reasons: ['Histórico insuficiente'], indicators: {}, action: 'WAIT' };
+             reasons: [{ text: 'Histórico insuficiente', cls: 'r-neutral'}],
+             indicators: {}, action: 'WAIT' };
   }
 
   const current = data.currentPrice || prices[prices.length - 1];
-  const rsi    = calcRSI(prices);
-  const sma20  = calcSMA(prices, 20);
-  const sma9   = calcSMA(prices, 9);
-  const macd   = calcMACD(prices);
-  const bb     = calcBollinger(prices);
-  const vol    = calcVolatility(prices.slice(-20));
-
-  const ind = { rsi, sma20, sma9, macd, bollinger: bb, volatility: vol, price: current };
+  const rsi     = calcRSI(prices);
+  const sma20   = calcSMA(prices, 20);
+  const sma9    = calcSMA(prices, 9);
+  const macd    = calcMACD(prices);
+  const bb      = calcBollinger(prices);
+  const vol     = calcVolatility(prices.slice(-20));
+  const ind     = { rsi, sma20, sma9, macd, bollinger: bb, volatility: vol, price: current };
 
   let callScore = 0, putScore = 0;
   const reasons = [];
-
   const rsiLow  = data.rsiLow  || 30;
   const rsiHigh = data.rsiHigh || 70;
 
@@ -404,77 +680,53 @@ function analyze(data) {
     putScore += 2;
     reasons.push({ text: `✅ MACD histograma negativo (${hist.toFixed(6)}) → momentum baixa`, cls: 'r-good' });
   } else {
-    reasons.push({ text: `⚪ MACD neutro (${hist.toFixed(6)})`, cls: 'r-neutral' });
+    reasons.push({ text: '⚪ MACD sem momentum claro', cls: 'r-neutral' });
   }
 
   if (bb) {
-    if (current <= bb.lower) {
+    if (current < bb.lower) {
       callScore += 2;
-      reasons.push({ text: '✅ Preço na banda inferior → pressão compradora (CALL)', cls: 'r-good' });
-    } else if (current >= bb.upper) {
+      reasons.push({ text: `✅ Preço abaixo da banda inferior BB → reversão alta`, cls: 'r-good' });
+    } else if (current > bb.upper) {
       putScore += 2;
-      reasons.push({ text: '✅ Preço na banda superior → pressão vendedora (PUT)', cls: 'r-good' });
+      reasons.push({ text: `✅ Preço acima da banda superior BB → reversão baixa`, cls: 'r-good' });
     } else {
       reasons.push({ text: '⚪ Preço dentro das Bandas de Bollinger', cls: 'r-neutral' });
     }
   }
 
-  const volPct = vol * 10000;
-  if (vol < 0.001) {
-    reasons.push({ text: `✅ Volatilidade baixa (${volPct.toFixed(3)}%) → mercado estável`, cls: 'r-good' });
+  if (vol > 0.002) {
+    reasons.push({ text: `⚠️ Volatilidade alta (${(vol*10000).toFixed(2)}) — sinal menos confiável`, cls: 'r-warn' });
+  }
+
+  const maxScore = 7;
+  let signal, action, color;
+  if (callScore > putScore && callScore >= 3) {
+    signal = 'COMPRAR (CALL)'; action = 'CALL'; color = 'var(--green)';
+  } else if (putScore > callScore && putScore >= 3) {
+    signal = 'VENDER (PUT)'; action = 'PUT'; color = 'var(--red)';
   } else {
-    reasons.push({ text: `⚠️ Volatilidade alta (${volPct.toFixed(3)}%) → risco elevado`, cls: 'r-warn' });
-    callScore = Math.max(0, callScore - 1);
-    putScore  = Math.max(0, putScore  - 1);
+    signal = 'AGUARDAR'; action = 'WAIT'; color = 'var(--yellow)';
   }
 
-  const wins   = data.wins   || 0;
-  const losses = data.losses || 0;
-  const total  = wins + losses;
-  if (total >= 5) {
-    const wr = (wins / total) * 100;
-    if (wr >= 60) {
-      reasons.push({ text: `✅ Win rate ${wr.toFixed(1)}% ≥ 60% → bot confiável`, cls: 'r-good' });
-    } else if (wr < 45) {
-      reasons.push({ text: `⚠️ Win rate ${wr.toFixed(1)}% < 45% → desempenho fraco`, cls: 'r-warn' });
-      callScore = Math.max(0, callScore - 1);
-      putScore  = Math.max(0, putScore  - 1);
-    }
-  }
-
-  const consec = data.consecutiveLosses || 0;
-  if (consec >= 3) {
-    reasons.push({ text: `⚠️ ${consec} perdas consecutivas → aguardar reversão`, cls: 'r-warn' });
-    callScore = 0; putScore = 0;
-  }
-
-  const maxScore    = 8;
-  const netCall     = (callScore / maxScore) * 100;
-  const netPut      = (putScore  / maxScore) * 100;
-  const minThresh   = Math.max(15, data.minScore || 25);
-
-  let signal, score, color, action;
-  if (callScore > putScore && netCall >= minThresh) {
-    signal = 'COMPRAR (CALL)'; score = netCall; color = 'var(--green)'; action = 'CALL';
-  } else if (putScore > callScore && netPut >= minThresh) {
-    signal = 'VENDER (PUT)';   score = netPut;  color = 'var(--red)';   action = 'PUT';
-  } else {
-    signal = 'AGUARDAR'; score = Math.max(netCall, netPut); color = 'var(--yellow)'; action = 'WAIT';
-  }
-
-  return { signal, score: +score.toFixed(1), color, reasons, indicators: ind, action };
+  const rawScore = Math.max(callScore, putScore);
+  const score    = Math.min(100, (rawScore / maxScore) * 100);
+  return { signal, action, score, color, reasons, indicators: ind };
 }
 
-// ── Helpers UI ─────────────────────────────────────────────────────
-function ts() { return new Date().toLocaleTimeString('pt-BR'); }
-function fmt(v, d = 5) { return v != null ? parseFloat(v).toFixed(d) : '—'; }
+// ── Helpers UI ────────────────────────────────────────────────────────────────
 function el(id) { return document.getElementById(id); }
+function fmt(v) { return v != null ? v.toFixed(5) : '—'; }
+function ts()   { return new Date().toLocaleTimeString('pt-BR', { hour12: false }); }
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 function addLog(msg, cls = 'log-info') {
-  logEntries.unshift({ msg, cls, time: ts() });
-  if (logEntries.length > 100) logEntries.pop();
-  el('cmdLog').innerHTML = logEntries.map(e =>
-    `<div class="log-row"><span class="log-ts">${e.time}</span><span class="${e.cls}">${e.msg}</span></div>`
+  const t = ts();
+  logEntries.unshift({ t, msg, cls });
+  if (logEntries.length > 150) logEntries.pop();
+  const log = el('cmdLog');
+  log.innerHTML = logEntries.slice(0, 100).map(e =>
+    `<div class="log-row"><span class="log-ts">${e.t}</span><span class="${e.cls}">${e.msg}</span></div>`
   ).join('');
 }
 
@@ -492,13 +744,26 @@ function setOnline(online) {
     el('statusApi').textContent = 'OFFLINE';
     el('statusApi').style.color = 'var(--red)';
   }
+  el('statusReconn').textContent = reconnects;
+}
+
+function updateCbBadge(state) {
+  const b = el('cbBadge');
+  const map = {
+    'CLOSED'   : ['cb-closed', 'CB: FECHADO ✅'],
+    'OPEN'     : ['cb-open',   'CB: ABERTO ⚡'],
+    'HALF_OPEN': ['cb-half',   'CB: TESTANDO 🟡'],
+  };
+  const [cls, text] = map[state] || ['cb-closed', 'CB: ?'];
+  b.className = `cb-badge ${cls}`;
+  b.textContent = text;
 }
 
 function updateLatBars(history) {
   const bars = el('latBars');
   if (!history || !history.length) { bars.innerHTML = ''; return; }
   const last50 = history.slice(-50);
-  const mx = Math.max(...last50.map(x => x.ms), 1);
+  const mx     = Math.max(...last50.map(x => x.ms), 1);
   bars.innerHTML = last50.map(x => {
     const h = Math.max(4, (x.ms / mx) * 50);
     const c = x.ms < 30 ? '#7fff7f' : x.ms < 100 ? '#ffe77f' : '#ff9090';
@@ -508,18 +773,47 @@ function updateLatBars(history) {
 
 function updateCooldownBar() {
   const elapsed = (Date.now() / 1000) - lastCmdTime;
-  const pct     = Math.min(100, (elapsed / COOLDOWN_SEC) * 100);
-  el('cooldownFill').style.width = pct + '%';
+  el('cooldownFill').style.width = Math.min(100, (elapsed / COOLDOWN_SEC) * 100) + '%';
 }
 
-// ── Envio de comando CALL/PUT para a API ────────────────────────────
-async function sendCommand(action, score, reason) {
+// ── Overlay de reconexão ──────────────────────────────────────────────────────
+function showOverlay(reason) {
+  el('reconnOverlay').className = 'visible';
+  if (reason) el('reconnReason').textContent = reason;
+}
+function hideOverlay() {
+  el('reconnOverlay').className = '';
+}
+
+let countdownTimer = null;
+function startCountdownBar(totalMs) {
+  clearInterval(countdownTimer);
+  const start = Date.now();
+  countdownTimer = setInterval(() => {
+    const elapsed = Date.now() - start;
+    const pct     = Math.min(100, (elapsed / totalMs) * 100);
+    const rem     = Math.max(0, (totalMs - elapsed) / 1000);
+    el('reconnFill').style.width   = pct + '%';
+    el('reconnCountdown').textContent = rem.toFixed(1);
+    if (elapsed >= totalMs) clearInterval(countdownTimer);
+  }, 100);
+}
+
+// ── Envio de comando com retry queue ─────────────────────────────────────────
+async function sendCommand(action, score, reason, queIfFail = true) {
   try {
-    await fetch(`${API}/api/command`, {
+    if (!CB.canRequest()) {
+      if (queIfFail) enqueueRetry(action, score, reason);
+      return;
+    }
+    const r = await fetchWithTimeout(`${API}/api/command`, {
       method : 'POST',
       headers: { 'Content-Type': 'application/json' },
       body   : JSON.stringify({ action, score, reason, ts: new Date().toISOString() }),
-    });
+    }, REQ_TIMEOUT);
+
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    CB.record(true);
     cmdCount[action]++;
     el('cntCall').textContent  = cmdCount.CALL;
     el('cntPut').textContent   = cmdCount.PUT;
@@ -527,30 +821,65 @@ async function sendCommand(action, score, reason) {
     addLog(`✅ ${action} enviado | score ${score.toFixed(1)}%`,
            action === 'CALL' ? 'log-call' : 'log-put');
   } catch (e) {
-    addLog(`❌ Erro ao enviar ${action}: ${e.message}`, 'log-info');
+    CB.record(false);
+    if (queIfFail) {
+      enqueueRetry(action, score, reason);
+      addLog(`⚠️ ${action} falhou → na fila de retry (${retryQueue.length})`, 'log-warn');
+    } else {
+      addLog(`❌ Retry falhou para ${action}: ${e.message}`, 'log-warn');
+    }
   }
 }
 
-// ── Ciclo principal ────────────────────────────────────────────────
+// ── Ciclo principal ───────────────────────────────────────────────────────────
 async function tick() {
+  if (Reconnector.active) return; // não tenta durante reconexão ativa
+
+  if (!CB.canRequest()) {
+    addLog('⚡ Circuit Breaker ABERTO — tick bloqueado', 'log-warn');
+    return;
+  }
+
   try {
-    const [dash, latest] = await Promise.all([
-      fetch(`${API}/api/dashboard`, { cache: 'no-store' }).then(r => r.json()),
-      fetch(`${API}/api/latest`,    { cache: 'no-store' }).then(r => r.json()),
+    const [dashR, latestR] = await Promise.all([
+      fetchWithTimeout(`${API}/api/dashboard`, {}, REQ_TIMEOUT),
+      fetchWithTimeout(`${API}/api/latest`,    {}, REQ_TIMEOUT),
     ]);
 
-    if (!isOnline) addLog('API reconectada.', 'log-info');
-    setOnline(true);
-    reconnects = 0;
+    if (!dashR.ok || !latestR.ok) throw new Error(`HTTP ${dashR.status}/${latestR.status}`);
 
-    // Stats
-    const stats = dash.stats || {};
+    const dash   = await dashR.json();
+    const latest = await latestR.json();
+
+    CB.record(true);
+    heartbeatFails = 0;
+
+    if (!isOnline) {
+      reconnects++;
+      addLog(`✅ API reconectada (#${reconnects})`, 'log-repair');
+      el('statusReconn').textContent = reconnects;
+      drainRetryQueue();
+    }
+    setOnline(true);
+    Reconnector.stop();
+
+    // ── Stats ──────────────────────────────────────────────────────────────
     el('statusSnaps').textContent  = dash.snapshots || 0;
     el('statusCmds').textContent   = dash.pending_commands || 0;
-    const uptRaw = dash.uptime_since || '';
-    el('statusUptime').textContent = uptRaw ? uptRaw.substring(11, 19) : '—';
+    el('statusUptime').textContent = (dash.uptime_since || '').substring(11, 19) || '—';
 
-    // Latência
+    // Circuit breaker do backend
+    if (dash.circuit_breaker && dash.circuit_breaker !== 'CLOSED') {
+      addLog(`⚠️ Backend CB: ${dash.circuit_breaker} — solicitando reparo`, 'log-warn');
+      scheduleRepair();
+    }
+
+    // Dados frescos?
+    if (dash.data_fresh === false) {
+      addLog('⚠️ Dados do bot estão velhos — bot pode ter parado', 'log-warn');
+    }
+
+    // ── Latência ───────────────────────────────────────────────────────────
     const lat = dash.latency || {};
     el('latCur').textContent = lat.last_ms != null ? `${lat.last_ms.toFixed(1)} ms` : '—';
     el('latAvg').textContent = lat.avg_ms  != null ? `${lat.avg_ms.toFixed(1)} ms`  : '—';
@@ -558,7 +887,6 @@ async function tick() {
     updateLatBars(lat.history);
 
     if (latest && !latest.error) {
-      // ── Análise local ───────────────────────────────────────────
       const result  = analyze(latest);
       const prices  = latest.priceHistory || [];
       const ind     = result.indicators;
@@ -566,24 +894,23 @@ async function tick() {
       const losses  = latest.losses  || 0;
       const total   = wins + losses || 1;
       const wr      = (wins / total) * 100;
-      const dp      = latest.dailyProfit  || 0;
-      const sec     = latest.securityLevel || 70;
-      const trades  = latest.tradesToday  || 0;
-      const maxT    = latest.maxTrades    || 100;
-      const bal     = latest.balance      || 0;
+      const dp      = latest.dailyProfit       || 0;
+      const sec     = latest.securityLevel     || 70;
+      const trades  = latest.tradesToday       || 0;
+      const maxT    = latest.maxTrades         || 100;
+      const bal     = latest.balance           || 0;
       const bot     = latest.botRunning;
       const oc      = latest.openContract;
       const consec  = latest.consecutiveLosses || 0;
 
       // Sinal
       const sigEl = el('signalBig');
-      sigEl.textContent  = result.signal;
-      sigEl.style.color  = result.color;
+      sigEl.textContent = result.signal;
+      sigEl.style.color = result.color;
       el('signalScore').textContent = `Score de confiança: ${result.score.toFixed(1)}%`;
       el('signalSub').textContent   =
         `Bot ${bot ? 'rodando' : 'parado'} · ${trades}/${maxT} trades · Win ${wr.toFixed(1)}%`;
 
-      // Log de mudança de sinal
       if (result.signal !== lastSignal) {
         const cls = result.signal.includes('CALL') ? 'log-call' :
                     result.signal.includes('PUT')  ? 'log-put'  : 'log-wait';
@@ -593,7 +920,6 @@ async function tick() {
         setTimeout(() => sigEl.classList.remove('flash'), 800);
       }
 
-      // Razões
       el('reasonsBox').innerHTML = result.reasons.map(r =>
         `<div class="${r.cls}">${r.text}</div>`
       ).join('');
@@ -604,20 +930,22 @@ async function tick() {
       if (result.action === 'WAIT') {
         statusMsg = `▶ ${result.signal} | score ${result.score.toFixed(1)}%`;
       } else if (!bot) {
-        statusMsg = '⚠️ Bot não está rodando — inicie o bot no HTML';
+        statusMsg = '⚠️ Bot não está rodando';
       } else if (oc) {
         statusMsg = '⏳ Contrato aberto — aguardando fechar';
       } else if (cooldownRem > 0) {
-        statusMsg = `⏳ Cooldown: ${cooldownRem.toFixed(0)}s restantes`;
+        statusMsg = `⏳ Cooldown: ${cooldownRem.toFixed(0)}s`;
+      } else if (!CB.canRequest()) {
+        statusMsg = '⚡ Circuit Breaker aberto — aguardando reparo';
       } else {
         statusMsg = `✅ ${result.signal} | score ${result.score.toFixed(1)}% | pronto`;
       }
       el('statusMsg').textContent = statusMsg;
       el('statusMsg').style.color = result.color;
 
-      // ── Auto-envio CALL/PUT ─────────────────────────────────────
-      const nowSec  = Date.now() / 1000;
-      const cdOk    = (nowSec - lastCmdTime) >= COOLDOWN_SEC;
+      // ── Auto-envio CALL/PUT ────────────────────────────────────────────
+      const nowSec = Date.now() / 1000;
+      const cdOk   = (nowSec - lastCmdTime) >= COOLDOWN_SEC;
       if (result.action !== 'WAIT' && result.score >= MIN_SCORE
           && cdOk && bot && !oc && consec < 3) {
         lastCmdTime = nowSec;
@@ -629,7 +957,6 @@ async function tick() {
       const rsiEl  = el('iRsi');
       rsiEl.textContent = rsiVal != null ? rsiVal.toFixed(2) : '—';
       rsiEl.style.color = rsiVal > 70 ? 'var(--red)' : rsiVal < 30 ? 'var(--green)' : 'var(--text)';
-
       el('iSma9').textContent  = ind.sma9  ? fmt(ind.sma9)  : '—';
       el('iSma20').textContent = ind.sma20 ? fmt(ind.sma20) : '—';
       el('iMacd').textContent  = ind.macd  ? ind.macd.histogram.toFixed(6) : '—';
@@ -645,35 +972,72 @@ async function tick() {
       el('statusBot').style.color      = bot ? 'var(--green)' : 'var(--red)';
       el('statusContract').textContent = oc  ? 'ABERTO' : 'NENHUM';
       el('statusContract').style.color = oc  ? 'var(--yellow)' : 'var(--text2)';
-
-      el('secBalance').textContent = `$ ${bal.toFixed(2)}`;
-      el('secBalance').style.color = bal >= 0 ? 'var(--green)' : 'var(--red)';
-      el('secWr').textContent      = `${wr.toFixed(1)}%`;
-      el('secWr').style.color      = wr >= 60 ? 'var(--green)' : wr < 45 ? 'var(--red)' : 'var(--yellow)';
-      el('secTrades').textContent  = `${trades}/${maxT}`;
-      el('secConsec').textContent  = consec;
-      el('secConsec').style.color  = consec >= 3 ? 'var(--red)' : 'var(--text)';
-      el('secProfit').textContent  = `$ ${dp.toFixed(2)}`;
-      el('secProfit').style.color  = dp >= 0 ? 'var(--green)' : 'var(--red)';
-      el('secLevel').textContent   = `${sec}%`;
+      el('secBalance').textContent     = `$ ${bal.toFixed(2)}`;
+      el('secBalance').style.color     = bal >= 0 ? 'var(--green)' : 'var(--red)';
+      el('secWr').textContent          = `${wr.toFixed(1)}%`;
+      el('secWr').style.color          = wr >= 60 ? 'var(--green)' : wr < 45 ? 'var(--red)' : 'var(--yellow)';
+      el('secTrades').textContent      = `${trades}/${maxT}`;
+      el('secConsec').textContent      = consec;
+      el('secConsec').style.color      = consec >= 3 ? 'var(--red)' : 'var(--text)';
+      el('secProfit').textContent      = `$ ${dp.toFixed(2)}`;
+      el('secProfit').style.color      = dp >= 0 ? 'var(--green)' : 'var(--red)';
+      el('secLevel').textContent       = `${sec}%`;
       el('secProgress').style.width      = `${sec}%`;
       el('secProgress').style.background = sec >= 60 ? 'var(--green)' : sec >= 40 ? 'var(--yellow)' : 'var(--red)';
     }
 
   } catch (e) {
-    if (isOnline) {
-      reconnects++;
+    CB.record(false);
+    if (isOnline || !Reconnector.active) {
       setOnline(false);
-      addLog(`API desconectada. Reconectando... (#${reconnects})`, 'log-wait');
-      el('statusMsg').textContent = `▶ API offline — tentando reconectar...`;
+      addLog(`❌ API desconectada: ${e.message}`, 'log-warn');
+      el('statusMsg').textContent = '⚠️ API offline — reconexão automática ativa';
       el('statusMsg').style.color = 'var(--red)';
+    }
+    if (!Reconnector.active) {
+      Reconnector.start(e.message);
     }
   }
 }
 
-// Clock + loop
+// ── Detectores de conectividade de rede ──────────────────────────────────────
+window.addEventListener('offline', () => {
+  addLog('🌐 Rede perdida (navigator.offline)', 'log-warn');
+  setOnline(false);
+  if (!Reconnector.active) Reconnector.start('rede desconectada');
+});
+
+window.addEventListener('online', () => {
+  addLog('🌐 Rede recuperada — testando API...', 'log-repair');
+  if (Reconnector.active) {
+    // Força tentativa imediata
+    clearTimeout(Reconnector.timer);
+    Reconnector.tryConnect();
+  } else {
+    tick();
+  }
+});
+
+// Volta ao foco da aba → testa conexão imediatamente
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    addLog('👁️ Aba ativa novamente — verificando conexão', 'log-info');
+    if (Reconnector.active) {
+      clearTimeout(Reconnector.timer);
+      Reconnector.tryConnect();
+    } else {
+      tick();
+    }
+  }
+});
+
+// ── Clock + loops ──────────────────────────────────────────────────────────
 setInterval(() => { el('clockEl').textContent = ts(); updateCooldownBar(); }, 500);
 setInterval(tick, INTERVAL_MS);
+setInterval(heartbeat, 5000);  // heartbeat independente a cada 5s
+
+// Start
+addLog('🚀 Auto-healing v3.0 iniciado. Protocolos ativos: CB + Retry Queue + Reconnector + Heartbeat', 'log-repair');
 tick();
 </script>
 </body>
