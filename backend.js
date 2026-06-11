@@ -1,28 +1,27 @@
-// netlify/functions/api.js
+// netlify/functions/api.js (backend — Netlify Blobs)
 import { getStore } from '@netlify/blobs';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
-const MAX_SNAPSHOTS    = 5000;
-const MAX_QUEUE        = 50;
-const MAX_LATENCY      = 200;
-const HEAP_LIMIT_PCT   = 0.80;
-const STALE_DATA_MS    = 60000;
+const MAX_SNAPSHOTS     = 5000;
+const MAX_QUEUE         = 50;
+const MAX_LATENCY       = 200;
+const HEAP_LIMIT_PCT    = 0.80;
+const STALE_DATA_MS     = 60000;
 
-// Nomes das stores (cada uma é um bucket isolado)
-const STORE_SNAPSHOTS  = 'snapshots';
-const STORE_LATEST     = 'latest';
-const STORE_QUEUE      = 'commandQueue';
-const STORE_STATS      = 'stats';
-const STORE_CIRCUIT    = 'circuitBreaker';
+// Nomes das stores
+const STORE_SNAPSHOTS   = 'snapshots';
+const STORE_LATEST      = 'latest';
+const STORE_QUEUE       = 'commandQueue';
+const STORE_STATS       = 'stats';
+const STORE_CIRCUIT     = 'circuitBreaker';
 const STORE_LATENCY_LOG = 'latencyLog';
-const STORE_LAST_DATA  = 'lastDataAt';
+const STORE_LAST_DATA   = 'lastDataAt';
 
 // ─── Utilitários de persistência ──────────────────────────────────────────────
 function getStoreClient(name) {
   return getStore(name);
 }
 
-// Leitura / escrita de arrays (snapshots, queue, latency)
 async function loadArray(storeName, maxItems = null) {
   const store = getStoreClient(storeName);
   const raw = await store.get('data');
@@ -43,7 +42,6 @@ async function pushCapped(storeName, item, max) {
   await saveArray(storeName, arr, max);
 }
 
-// Leitura / escrita de objeto simples (latest, stats, circuit)
 async function loadObject(storeName) {
   const store = getStoreClient(storeName);
   const raw = await store.get('data');
@@ -58,25 +56,24 @@ async function saveObject(storeName, obj) {
 // ─── Circuit Breaker persistente ─────────────────────────────────────────────
 async function recordCircuitFailure(success) {
   const cb = await loadObject(STORE_CIRCUIT);
-  cb.failures = cb.failures || 0;
-  cb.state = cb.state || 'CLOSED';
+  cb.failures  = cb.failures  || 0;
+  cb.state     = cb.state     || 'CLOSED';
   cb.threshold = cb.threshold || 5;
-  cb.timeout = cb.timeout || 30000;
-  cb.openedAt = cb.openedAt || 0;
+  cb.timeout   = cb.timeout   || 30000;
+  cb.openedAt  = cb.openedAt  || 0;
 
   if (success) {
     cb.failures = 0;
     if (cb.state !== 'CLOSED') {
-      console.log(`[CB] ✅ Circuito FECHADO — sistema recuperado`);
+      console.log('[CB] ✅ Circuito FECHADO — sistema recuperado');
       cb.state = 'CLOSED';
     }
   } else {
     cb.failures++;
     if (cb.failures >= cb.threshold && cb.state === 'CLOSED') {
-      cb.state = 'OPEN';
+      cb.state    = 'OPEN';
       cb.openedAt = Date.now();
       console.error(`[CB] ⚡ Circuito ABERTO após ${cb.failures} falhas`);
-      // incrementa watchdog alerts via stats
       const stats = await loadObject(STORE_STATS);
       stats.watchdog_alerts = (stats.watchdog_alerts || 0) + 1;
       await saveObject(STORE_STATS, stats);
@@ -87,10 +84,10 @@ async function recordCircuitFailure(success) {
 }
 
 async function canCircuitRequest() {
-  const cb = await loadObject(STORE_CIRCUIT);
-  const state = cb.state || 'CLOSED';
+  const cb      = await loadObject(STORE_CIRCUIT);
+  const state   = cb.state    || 'CLOSED';
   const openedAt = cb.openedAt || 0;
-  const timeout = cb.timeout || 30000;
+  const timeout = cb.timeout  || 30000;
 
   if (state === 'CLOSED') return true;
   if (state === 'OPEN') {
@@ -105,10 +102,10 @@ async function canCircuitRequest() {
   return true; // HALF_OPEN
 }
 
-// ─── Helpers de resposta ────────────────────────────────────────────────────
+// ─── Helpers de resposta ──────────────────────────────────────────────────────
 function corsHeaders() {
   return {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin':  '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, X-Requested-With',
   };
@@ -117,17 +114,14 @@ function corsHeaders() {
 function sendJSON(statusCode, body) {
   return {
     statusCode,
-    headers: {
-      'Content-Type': 'application/json; charset=utf-8',
-      ...corsHeaders(),
-    },
+    headers: { 'Content-Type': 'application/json; charset=utf-8', ...corsHeaders() },
     body: JSON.stringify(body, null, 0),
   };
 }
 
 function now() { return new Date().toISOString(); }
 
-// ─── Handlers dos endpoints (adaptados para async com blob) ─────────────────
+// ─── Handlers dos endpoints ───────────────────────────────────────────────────
 async function handlePostData(body) {
   if (typeof body !== 'object') throw new Error('Payload inválido');
   body._received_at = now();
@@ -146,8 +140,12 @@ async function handlePostCommand(body) {
   const stats = await loadObject(STORE_STATS);
   stats.total_commands = (stats.total_commands || 0) + 1;
   if (body.action === 'CALL') stats.calls_sent = (stats.calls_sent || 0) + 1;
-  if (body.action === 'PUT') stats.puts_sent = (stats.puts_sent || 0) + 1;
-  stats.last_signal = body.action === 'CALL' ? 'COMPRAR (CALL)' : (body.action === 'PUT' ? 'VENDER (PUT)' : stats.last_signal);
+  if (body.action === 'PUT')  stats.puts_sent  = (stats.puts_sent  || 0) + 1;
+  stats.last_signal = body.action === 'CALL'
+    ? 'COMPRAR (CALL)'
+    : body.action === 'PUT'
+      ? 'VENDER (PUT)'
+      : (stats.last_signal || 'AGUARDAR');
   stats.last_score = body.score || 0;
   await saveObject(STORE_STATS, stats);
 
@@ -158,28 +156,28 @@ async function handlePostCommand(body) {
 async function handleGetHealth() {
   const latencies = await loadArray(STORE_LATENCY_LOG);
   const lats = latencies.map(l => l.ms);
-  const avg = lats.length ? lats.reduce((a, b) => a + b, 0) / lats.length : 0;
-  const max = lats.length ? Math.max(...lats) : 0;
-  const mem = process.memoryUsage();
+  const avg  = lats.length ? lats.reduce((a, b) => a + b, 0) / lats.length : 0;
+  const max  = lats.length ? Math.max(...lats) : 0;
+  const mem  = process.memoryUsage();
   const lastData = await loadObject(STORE_LAST_DATA);
-  const stale = lastData.ts ? (Date.now() - lastData.ts) : null;
-  const stats = await loadObject(STORE_STATS);
-  const cb = await loadObject(STORE_CIRCUIT);
+  const stale    = lastData.ts ? (Date.now() - lastData.ts) : null;
+  const stats    = await loadObject(STORE_STATS);
+  const cb       = await loadObject(STORE_CIRCUIT);
 
   return {
-    status: 'online',
-    snapshots: (await loadArray(STORE_SNAPSHOTS)).length,
+    status:           'online',
+    snapshots:        (await loadArray(STORE_SNAPSHOTS)).length,
     pending_commands: (await loadArray(STORE_QUEUE)).length,
-    time: now(),
-    latency_avg_ms: +avg.toFixed(2),
-    latency_max_ms: +max.toFixed(2),
-    uptime_since: stats.start_time || now(),
-    circuit_breaker: cb.state || 'CLOSED',
-    heap_used_pct: +((mem.heapUsed / mem.heapTotal) * 100).toFixed(1),
-    data_stale_ms: stale,
-    data_fresh: stale !== null ? stale < STALE_DATA_MS : null,
-    auto_cleanups: stats.auto_cleanups || 0,
-    watchdog_alerts: stats.watchdog_alerts || 0,
+    time:             now(),
+    latency_avg_ms:   +avg.toFixed(2),
+    latency_max_ms:   +max.toFixed(2),
+    uptime_since:     stats.start_time || now(),
+    circuit_breaker:  cb.state || 'CLOSED',
+    heap_used_pct:    +((mem.heapUsed / mem.heapTotal) * 100).toFixed(1),
+    data_stale_ms:    stale,
+    data_fresh:       stale !== null ? stale < STALE_DATA_MS : null,
+    auto_cleanups:    stats.auto_cleanups   || 0,
+    watchdog_alerts:  stats.watchdog_alerts || 0,
   };
 }
 
@@ -205,11 +203,10 @@ async function handleGetCommand() {
 }
 
 async function handlePostRepair() {
-  // Reseta circuit breaker
-  await saveObject(STORE_CIRCUIT, { failures: 0, state: 'CLOSED', threshold: 5, timeout: 30000, openedAt: 0 });
-  // Limpa fila de comandos
+  await saveObject(STORE_CIRCUIT, {
+    failures: 0, state: 'CLOSED', threshold: 5, timeout: 30000, openedAt: 0,
+  });
   await saveArray(STORE_QUEUE, [], MAX_QUEUE);
-  // Reseta contagem de alertas nas stats
   const stats = await loadObject(STORE_STATS);
   stats.watchdog_alerts = 0;
   await saveObject(STORE_STATS, stats);
@@ -220,55 +217,55 @@ async function handlePostRepair() {
 async function handleGetDashboard() {
   const latencies = await loadArray(STORE_LATENCY_LOG);
   const lats = latencies.map(l => l.ms);
-  const avg = lats.length ? lats.reduce((a, b) => a + b, 0) / lats.length : 0;
-  const mx = lats.length ? Math.max(...lats) : 0;
-  const mem = process.memoryUsage();
+  const avg  = lats.length ? lats.reduce((a, b) => a + b, 0) / lats.length : 0;
+  const mx   = lats.length ? Math.max(...lats) : 0;
+  const mem  = process.memoryUsage();
   const lastData = await loadObject(STORE_LAST_DATA);
-  const stale = lastData.ts ? (Date.now() - lastData.ts) : null;
-  const stats = await loadObject(STORE_STATS);
-  const cb = await loadObject(STORE_CIRCUIT);
-  const latest = await loadObject(STORE_LATEST);
-  const queue = await loadArray(STORE_QUEUE);
+  const stale    = lastData.ts ? (Date.now() - lastData.ts) : null;
+  const stats    = await loadObject(STORE_STATS);
+  const cb       = await loadObject(STORE_CIRCUIT);
+  const latest   = await loadObject(STORE_LATEST);
+  const queue    = await loadArray(STORE_QUEUE);
 
   return {
-    api_status: 'online',
-    snapshots: (await loadArray(STORE_SNAPSHOTS)).length,
+    api_status:       'online',
+    snapshots:        (await loadArray(STORE_SNAPSHOTS)).length,
     pending_commands: queue.length,
     stats: {
-      total_commands: stats.total_commands || 0,
-      calls_sent: stats.calls_sent || 0,
-      puts_sent: stats.puts_sent || 0,
-      start_time: stats.start_time || now(),
-      last_signal: stats.last_signal || 'AGUARDAR',
-      last_score: stats.last_score || 0,
-      auto_cleanups: stats.auto_cleanups || 0,
+      total_commands:  stats.total_commands  || 0,
+      calls_sent:      stats.calls_sent      || 0,
+      puts_sent:       stats.puts_sent       || 0,
+      start_time:      stats.start_time      || now(),
+      last_signal:     stats.last_signal     || 'AGUARDAR',
+      last_score:      stats.last_score      || 0,
+      auto_cleanups:   stats.auto_cleanups   || 0,
       watchdog_alerts: stats.watchdog_alerts || 0,
-      total_requests: stats.total_requests || 0,
-      errors_caught: stats.errors_caught || 0,
+      total_requests:  stats.total_requests  || 0,
+      errors_caught:   stats.errors_caught   || 0,
     },
     latency: {
-      avg_ms: +avg.toFixed(2),
-      max_ms: +mx.toFixed(2),
+      avg_ms:  +avg.toFixed(2),
+      max_ms:  +mx.toFixed(2),
       last_ms: lats.length ? lats[lats.length - 1] : 0,
       history: latencies.slice(-50),
     },
-    latest_data: latest,
-    uptime_since: stats.start_time || now(),
+    latest_data:     latest,
+    uptime_since:    stats.start_time || now(),
     circuit_breaker: cb.state || 'CLOSED',
-    heap_used_pct: +((mem.heapUsed / mem.heapTotal) * 100).toFixed(1),
-    data_stale_ms: stale,
-    data_fresh: stale !== null ? stale < STALE_DATA_MS : null,
+    heap_used_pct:   +((mem.heapUsed / mem.heapTotal) * 100).toFixed(1),
+    data_stale_ms:   stale,
+    data_fresh:      stale !== null ? stale < STALE_DATA_MS : null,
   };
 }
 
-// ─── Entrypoint Netlify Function ─────────────────────────────────────────────
+// ─── Entrypoint Netlify Function ──────────────────────────────────────────────
 export async function handler(event, context) {
-  const start = process.hrtime.bigint();
+  const start  = process.hrtime.bigint();
   const method = event.httpMethod;
-  const path = event.path.replace(/^\/\.netlify\/functions\/api/, ''); // normaliza path
-  const headers = event.headers;
+  // Normaliza o path removendo o prefixo da Netlify Function
+  const path   = event.path.replace(/^\/\.netlify\/functions\/[^/]+/, '') || '/';
 
-  // Atualiza contador de requisições (stats)
+  // Atualiza contador de requisições
   const stats = await loadObject(STORE_STATS);
   stats.total_requests = (stats.total_requests || 0) + 1;
   if (!stats.start_time) stats.start_time = now();
@@ -276,14 +273,10 @@ export async function handler(event, context) {
 
   // Preflight CORS
   if (method === 'OPTIONS') {
-    return {
-      statusCode: 204,
-      headers: corsHeaders(),
-      body: '',
-    };
+    return { statusCode: 204, headers: corsHeaders(), body: '' };
   }
 
-  // Circuit breaker check
+  // Circuit breaker
   const canReq = await canCircuitRequest();
   if (!canReq) {
     const cb = await loadObject(STORE_CIRCUIT);
@@ -296,42 +289,33 @@ export async function handler(event, context) {
   }
 
   let result;
-  let success = true;
   try {
     const body = event.body ? JSON.parse(event.body) : {};
 
-    // Roteamento
-    if (method === 'POST' && path === '/api/data') {
-      result = await handlePostData(body);
-    } else if (method === 'POST' && path === '/api/command') {
-      result = await handlePostCommand(body);
-    } else if (method === 'GET' && path === '/api/health') {
-      result = await handleGetHealth();
-    } else if (method === 'GET' && path === '/api/latest') {
-      result = await handleGetLatest();
-    } else if (method === 'GET' && path === '/api/history') {
+    if      (method === 'POST' && path === '/api/data')       result = await handlePostData(body);
+    else if (method === 'POST' && path === '/api/command')    result = await handlePostCommand(body);
+    else if (method === 'GET'  && path === '/api/health')     result = await handleGetHealth();
+    else if (method === 'GET'  && path === '/api/latest')     result = await handleGetLatest();
+    else if (method === 'GET'  && path === '/api/history') {
       const limit = event.queryStringParameters?.limit || '200';
       result = await handleGetHistory(limit);
-    } else if (method === 'GET' && path === '/api/command') {
-      result = await handleGetCommand();
-    } else if (method === 'POST' && path === '/api/repair') {
-      result = await handlePostRepair();
-    } else if (method === 'GET' && path === '/api/dashboard') {
-      result = await handleGetDashboard();
-    } else {
+    }
+    else if (method === 'GET'  && path === '/api/command')    result = await handleGetCommand();
+    else if (method === 'POST' && path === '/api/repair')     result = await handlePostRepair();
+    else if (method === 'GET'  && path === '/api/dashboard')  result = await handleGetDashboard();
+    else {
       return sendJSON(404, {
         error: 'endpoint desconhecido',
         endpoints: [
-          'POST /api/data', 'GET /api/latest', 'GET /api/history',
-          'GET /api/health', 'POST /api/command', 'GET /api/command',
-          'GET /api/dashboard', 'POST /api/repair',
+          'POST /api/data',    'GET /api/latest',    'GET /api/history',
+          'GET /api/health',   'POST /api/command',  'GET /api/command',
+          'GET /api/dashboard','POST /api/repair',
         ],
       });
     }
 
     await recordCircuitFailure(true);
   } catch (err) {
-    success = false;
     await recordCircuitFailure(false);
     const statsErr = await loadObject(STORE_STATS);
     statsErr.errors_caught = (statsErr.errors_caught || 0) + 1;
@@ -345,7 +329,7 @@ export async function handler(event, context) {
   const ms = Number(ns) / 1e6;
   await pushCapped(STORE_LATENCY_LOG, { ms: +ms.toFixed(2), ts: now() }, MAX_LATENCY);
 
-  // Verificação de heap e limpeza automática (a cada request, mas limitado)
+  // Limpeza automática se heap estiver alto
   const mem = process.memoryUsage();
   if (mem.heapUsed / mem.heapTotal > HEAP_LIMIT_PCT) {
     const snaps = await loadArray(STORE_SNAPSHOTS);
@@ -354,14 +338,14 @@ export async function handler(event, context) {
       const statsCl = await loadObject(STORE_STATS);
       statsCl.auto_cleanups = (statsCl.auto_cleanups || 0) + 1;
       await saveObject(STORE_STATS, statsCl);
-      console.warn(`[WD] ⚠️ Heap alto — limpei snapshots`);
+      console.warn('[WD] ⚠️ Heap alto — limpei snapshots');
     }
   }
 
   // Verifica stale data
   const lastData = await loadObject(STORE_LAST_DATA);
   if (lastData.ts && (Date.now() - lastData.ts) > STALE_DATA_MS) {
-    console.warn(`[WD] ⚠️ Sem dados do bot há muito tempo`);
+    console.warn('[WD] ⚠️ Sem dados do bot há muito tempo');
     const statsStale = await loadObject(STORE_STATS);
     statsStale.watchdog_alerts = (statsStale.watchdog_alerts || 0) + 1;
     await saveObject(STORE_STATS, statsStale);
