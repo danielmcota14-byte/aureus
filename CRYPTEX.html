@@ -724,19 +724,22 @@
       copyToClipboard(code);
     }
 
-    async function openMoonPay() {
+    function openMoonPay() {
       const amount = parseFloat($('moonpay-amount')?.value || '0');
       if (!amount || amount <= 0) return showToast('Informe um valor válido para MoonPay', 'error');
       if (!walletAddress) return showToast('Crie ou importe uma carteira antes de usar MoonPay', 'error');
 
-      try {
-        const response = await fetch(`/moonpay/url?amount=${encodeURIComponent(amount.toFixed(2))}&walletAddress=${encodeURIComponent(walletAddress)}`);
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Falha ao gerar checkout MoonPay');
-        window.open(data.url, '_blank');
-      } catch (error) {
-        showToast(error.message, 'error');
-      }
+      const network = NETWORKS[currentNetwork];
+      const currencyCode = network.symbol.toLowerCase();
+      const params = new URLSearchParams({
+        apiKey: 'pk_live_your_moonpay_public_key',
+        currencyCode: currencyCode,
+        walletAddress: walletAddress,
+        baseCurrencyAmount: amount.toFixed(2),
+        baseCurrencyCode: 'brl',
+      });
+      const moonpayUrl = `https://buy.moonpay.com?${params.toString()}`;
+      window.open(moonpayUrl, '_blank');
     }
 
     function updateReceiveQr() {
