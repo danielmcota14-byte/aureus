@@ -745,9 +745,9 @@ let _autoBotRunning = false;
 
 async function _refreshAutoBotStatus(){
     try {
-        const r = await fetch('/bot/status', { cache:'no-store' });
+        const r = await fetch('/.netlify/functions/api/api/health', { cache:'no-store' });
         const d = await r.json();
-        _autoBotRunning = d.running;
+        _autoBotRunning = d.status === 'online';
     } catch(e){ _autoBotRunning = false; }
     const dot  = document.getElementById('autoBotDot');
     const text = document.getElementById('autoBotStatusText');
@@ -786,14 +786,12 @@ async function toggleCloudBot(){
     // Feedback imediato
     if(btn){ btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Aguarde...'; }
 
-    // Verifica status atual
-    let running = false;
+    // No Netlify serverless o bot roda localmente — aqui apenas verifica se a API está online
     try {
-        const sr = await fetch('/bot/status', { cache:'no-store' });
+        const sr = await fetch('/.netlify/functions/api/api/health', { cache:'no-store' });
         const sd = await sr.json();
-        running = !!sd.running;
+        if(sd.status !== 'online') throw new Error('API offline');
     } catch(e){
-        // server.js inacessível
         if(btn){ btn.disabled = false; btn.innerHTML = '<i class="fas fa-robot"></i> Ativar Bot Automático'; btn.className = 'info'; }
         if(text) text.innerHTML = '<strong style="color:#ff9090">❌ Erro: API Netlify inacessível. Verifique se o deploy foi concluído.</strong>';
         if(dot) dot.className = 'api-dot api-offline';
@@ -801,18 +799,9 @@ async function toggleCloudBot(){
         return;
     }
 
-    // Executa ação contrária ao estado atual
-    const endpoint = running ? '/bot/stop' : '/bot/start';
-    try {
-        const r = await fetch(endpoint, { method:'POST', cache:'no-store' });
-        const d = await r.json();
-        _autoBotRunning = !running;
-        const msg = d.message || (_autoBotRunning ? 'backend.js iniciado na API Netlify.' : 'backend.js parado.');
-        addLog((_autoBotRunning ? '🤖 ' : '⏹ ') + msg, d.ok ? 'success' : 'warn');
-    } catch(e){
-        addLog('Erro ao executar comando: ' + e.message, 'error');
-        _autoBotRunning = running; // reverte
-    }
+    // Alterna estado local do bot (o bot real roda no seu PC e envia dados via API)
+    _autoBotRunning = !_autoBotRunning;
+    addLog((_autoBotRunning ? '🤖 Bot ativado' : '⏹ Bot desativado') + ' — API Netlify online.', 'success');
 
     // Atualiza UI
     if(btn){
