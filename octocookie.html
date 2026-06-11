@@ -408,7 +408,7 @@ tr:hover td{background:var(--bg3)}
     <div class="popup-content">
       <h3>Como funciona:</h3>
       <ul style="padding-left:20px;margin-bottom:12px">
-        <li>O <strong>backend.js</strong> (Octocookie API Server) será iniciado localmente na porta <strong>5050</strong></li>
+        <li>O <strong>backend.js</strong> (Octocookie API Server) será iniciado localmente na API Netlify Functions</li>
         <li>O bot ficará escutando sinais de análise e enviando ordens CALL/PUT automaticamente</li>
         <li>O dashboard abaixo mostra em tempo real os dados e comandos da API</li>
         <li>Você pode parar o bot a qualquer momento clicando novamente no botão</li>
@@ -754,7 +754,7 @@ async function _refreshAutoBotStatus(){
     const btn  = document.getElementById('toggleAutoBotBtn');
     if(dot)  dot.className = 'api-dot ' + (_autoBotRunning ? 'api-online' : 'api-offline');
     if(text) text.innerHTML = _autoBotRunning
-        ? 'Bot automático <strong style="color:#7fff7f">RODANDO</strong> na porta 5050 — recebendo sinais CALL/PUT.'
+        ? 'Bot automático <strong style="color:#7fff7f">RODANDO</strong> na API Netlify — recebendo sinais CALL/PUT.'
         : 'Bot automático <strong>parado</strong> — clique em "Ativar Bot Automático" para iniciar.';
     if(btn){
         btn.innerHTML = _autoBotRunning
@@ -795,9 +795,9 @@ async function toggleCloudBot(){
     } catch(e){
         // server.js inacessível
         if(btn){ btn.disabled = false; btn.innerHTML = '<i class="fas fa-robot"></i> Ativar Bot Automático'; btn.className = 'info'; }
-        if(text) text.innerHTML = '<strong style="color:#ff9090">❌ Erro: server.js não está acessível em localhost. Rode <code>npm start</code> primeiro.</strong>';
+        if(text) text.innerHTML = '<strong style="color:#ff9090">❌ Erro: API Netlify inacessível. Verifique se o deploy foi concluído.</strong>';
         if(dot) dot.className = 'api-dot api-offline';
-        addLog('❌ server.js inacessível. Rode "npm start" no terminal.', 'error');
+        addLog('❌ API Netlify inacessível. Verifique o deploy.', 'error');
         return;
     }
 
@@ -807,7 +807,7 @@ async function toggleCloudBot(){
         const r = await fetch(endpoint, { method:'POST', cache:'no-store' });
         const d = await r.json();
         _autoBotRunning = !running;
-        const msg = d.message || (_autoBotRunning ? 'backend.js iniciado na porta 5050.' : 'backend.js parado.');
+        const msg = d.message || (_autoBotRunning ? 'backend.js iniciado na API Netlify.' : 'backend.js parado.');
         addLog((_autoBotRunning ? '🤖 ' : '⏹ ') + msg, d.ok ? 'success' : 'warn');
     } catch(e){
         addLog('Erro ao executar comando: ' + e.message, 'error');
@@ -822,7 +822,7 @@ async function toggleCloudBot(){
     }
     if(dot)  dot.className  = 'api-dot ' + (_autoBotRunning ? 'api-online' : 'api-offline');
     if(text) text.innerHTML = _autoBotRunning
-        ? 'Bot automático <strong style="color:#7fff7f">✅ RODANDO</strong> na porta 5050 — recebendo sinais CALL/PUT.'
+        ? 'Bot automático <strong style="color:#7fff7f">✅ RODANDO</strong> na API Netlify — recebendo sinais CALL/PUT.'
         : 'Bot automático <strong>parado</strong> — clique em "Ativar Bot Automático" para iniciar.';
 }
 
@@ -1046,7 +1046,7 @@ function updatePrice(price){
     // Envia dados ao analize.py via octo_cookie_api.py
     const wins = state.wins||0, losses = state.losses||0;
     const total = wins+losses||1;
-    fetch('http://localhost:5050/api/data', {
+    fetch('/.netlify/functions/api/api/data', {
         method:'POST',
         headers:{'Content-Type':'application/json'},
         body: JSON.stringify({
@@ -1583,7 +1583,7 @@ function updateTime(){ document.getElementById('currentTime').textContent=new Da
 
     async function pollCommand(){
         try {
-            const res = await fetch('http://localhost:5050/api/command', { cache:'no-store' });
+            const res = await fetch('/.netlify/functions/api/api/command', { cache:'no-store' });
             if(!res.ok) return;
             const data = await res.json();
             const cmd = data.command;
@@ -1611,7 +1611,7 @@ function updateTime(){ document.getElementById('currentTime').textContent=new Da
 
     // Inicia o poll imediatamente e a cada POLL_MS
     setInterval(pollCommand, POLL_MS);
-    console.log('[OCTOCOOKIE] Command poll iniciado em http://localhost:5050/api/command');
+    console.log('[OCTOCOOKIE] Command poll iniciado em /.netlify/functions/api/api/command');
 })();
 </script>
 </body>
