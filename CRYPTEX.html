@@ -2681,8 +2681,6 @@ html, body { overflow-x: hidden; max-width: 100vw; }
 /* Nav items: prevent text from wrapping badly */
 .nav-item { overflow: hidden; }
 
-/* dApp iframe: fixed height that works on mobile */
-#inner-dapp > div { height: calc(100dvh - var(--nav-h) - var(--top-h) - 20px) !important; }
 
 /* Compose footer: stack on very small screens */
 @media (max-width: 340px) {
@@ -4042,10 +4040,6 @@ html, body { overflow-x: hidden; max-width: 100vw; }
               <button class="btn-danger" onclick="handleLogout()">SAIR DA CONTA</button>
             </div>
           </div>
-
-          <!-- ===================== DAPP INNER PAGE ===================== -->
-          <div class="inner-page" id="inner-dapp">
-            <div class="page-inner-header">Trader</div>
             <div style="display:flex;height:calc(100vh - 180px);padding:0 16px 16px">
               <iframe src="https://aureus-pb4s.onrender.com/octocookie.html"
                 style="width:100%;height:100%;border:none;border-radius:var(--radius);background:var(--bg2)"></iframe>
@@ -4064,9 +4058,6 @@ html, body { overflow-x: hidden; max-width: 100vw; }
           </div>
           <div class="nav-item" data-page="social" onclick="switchInnerPage('social');window.loadSocialFeed&&window.loadSocialFeed()">
             <span class="nav-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><path d="M18 10c0 3.87-3.58 7-8 7a9.1 9.1 0 0 1-3-.5L2 18l1.5-4A6.5 6.5 0 0 1 2 10c0-3.87 3.58-7 8-7s8 3.13 8 7z"/></svg></span><span class="nav-label">SOCIAL</span>
-          </div>
-          <div class="nav-item" data-page="dapp" onclick="switchInnerPage('dapp')">
-            <span class="nav-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><polygon points="11,2 3,12 10,12 9,18 17,8 10,8"/></svg></span><span class="nav-label">TRADER</span>
           </div>
           <div class="nav-item" data-page="settings" onclick="switchInnerPage('settings')">
             <span class="nav-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" width="20" height="20"><circle cx="10" cy="10" r="3"/><path d="M10 1v2M10 17v2M1 10h2M17 10h2M3.22 3.22l1.42 1.42M15.36 15.36l1.42 1.42M3.22 16.78l1.42-1.42M15.36 4.64l1.42-1.42"/></svg></span><span class="nav-label">CONTA</span>
