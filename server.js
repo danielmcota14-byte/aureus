@@ -1,6 +1,4 @@
 // netlify/functions/api.js
-// Versão serverless para Netlify Functions
-
 const express = require('express');
 const serverless = require('serverless-http');
 const crypto = require('crypto');
@@ -19,18 +17,15 @@ if (!moonpayPublicKey) console.warn('⚠️  MOONPAY_PUBLIC_KEY não definida.')
 app.use(express.json({ verify: (req, _res, buf) => { req.rawBody = buf; } }));
 app.use(express.urlencoded({ extended: true }));
 
-// Servir arquivos estáticos da pasta 'public' (dois níveis acima da função)
-const publicPath = path.resolve(__dirname, '../../public');
+// Servir arquivos estáticos da raiz do projeto
+const publicPath = path.resolve(__dirname, '../..');
 app.use(express.static(publicPath));
 
 // ─── Rotas ────────────────────────────────────────────────────────────────────
-
-// Rota principal: serve octocookie.html
 app.get('/', (req, res) => {
   res.sendFile(path.join(publicPath, 'octocookie.html'));
 });
 
-// Health check
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
@@ -41,7 +36,6 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Webhook MoonPay
 app.post('/api/moonpay-webhook', (req, res) => {
   const signature = req.headers['moonpay-signature'];
   console.log('[MoonPay] Webhook recebido', { signature: signature?.substring(0, 20) });
@@ -75,7 +69,6 @@ app.post('/api/moonpay-webhook', (req, res) => {
   res.json({ received: true });
 });
 
-// Reparo (não aplicável em serverless)
 app.post('/api/repair', (req, res) => {
   console.log('[API] 🔧 Reparo solicitado (modo serverless - sem efeito)');
   res.status(501).json({
@@ -84,7 +77,6 @@ app.post('/api/repair', (req, res) => {
   });
 });
 
-// Reset de contador de restarts (simulado)
 app.post('/bot/reset-restarts', (req, res) => {
   console.log('[API] 🔄 Reset restarts (simulado)');
   res.json({
@@ -95,7 +87,7 @@ app.post('/bot/reset-restarts', (req, res) => {
   });
 });
 
-// Fallback SPA: serve octocookie.html para qualquer rota não mapeada
+// Fallback SPA
 app.get('*', (req, res) => {
   res.sendFile(path.join(publicPath, 'octocookie.html'));
 });
