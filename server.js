@@ -1,113 +1,106 @@
-#!/usr/bin/env node
-/**
- * CRYPTEX + OCTOCOOKIE  —  servidor principal  v3.0  AUTO-HEALING
- * ================================================================
- * Porta: process.env.PORT || 3000
- * 
- * ✅ Adaptado para Render.com
- */
+// netlify/functions/api.js
+// Um único arquivo para toda a aplicação (API + frontend estático)
 
-const express    = require('express');
-const cors       = require('cors');
-const path       = require('path');
-const crypto     = require('crypto');
-const { spawn }  = require('child_process');
-const http       = require('http');
+const express = require('express');
+const serverless = require('serverless-http');
+const crypto = require('crypto');
+const path = require('path');
 
-try { require('dotenv').config(); } catch(e) {}
+const app = express();
 
-const app  = express();
-const port = process.env.PORT || 3000;
-
+// Configurações
 const moonpayPublicKey = process.env.MOONPAY_PUBLIC_KEY || '';
 const moonpayWidgetUrl = process.env.MOONPAY_WIDGET_URL || 'https://buy-sandbox.moonpay.com';
+const moonpayWebhookSecret = process.env.MOONPAY_WEBHOOK_SECRET;
 
-if (!moonpayPublicKey) console.warn('⚠️  MOONPAY_PUBLIC_KEY não definida.');
+if (!moonpayPublicKey) console.warn('⚠️ MOONPAY_PUBLIC_KEY não definida.');
 
-// ─── Middlewares ──────────────────────────────────────────────────────────────
-app.use(cors());
+// Middlewares
 app.use(express.json({ verify: (req, _res, buf) => { req.rawBody = buf; } }));
+app.use(express.urlencoded({ extended: true }));
 
-// ─── Estado do backend.js ─────────────────────────────────────────────────────
-let _backendProcess   = null;
-let _restartCount     = 0;
-let _lastRestartAt    = 0;
-let _autoStartEnabled = true;   // se false, não reinicia automaticamente
-const MAX_RESTARTS    = 10;
-const MIN_UPTIME_MS   = 3000;   // considera crash se morreu em < 3s
-const BACKEND_PORT    = 5050;
+// Servir arquivos estáticos da pasta 'public' (um nível acima da função)
+// No Netlify, o caminho relativo muda; vamos usar path.resolve
+const publicPath = path.resolve(__dirname, '../../public');
+app.use(express.static(publicPath));
 
-// Backoff exponencial: 1s, 2s, 4s, 8s, 16s, 30s, 30s...
-function backoffMs(attempt) {
-  return Math.min(30000, 1000 * Math.pow(2, Math.min(attempt, 5)));
-}
+// Rota principal: serve octocookie.html
+app.get('/', (req, res) => {
+  res.sendFile(path.join(publicPath, 'octocookie.html'));
+});
 
-// ─── Inicia backend.js ────────────────────────────────────────────────────────
-function startBackendProcess(reason = 'manual') {
-  if (_backendProcess) {
-    return { ok: false, running: true, message: 'backend.js já está rodando', pid: _backendProcess.pid };
-  }
-
-  if (!_autoStartEnabled) {
-    return { ok: false, running: false, message: 'Auto-start desabilitado' };
-  }
-
-  if (_restartCount >= MAX_RESTARTS) {
-    console.error(`[WD] ❌ Limite de ${MAX_RESTARTS} reinicializações atingido. Reparo manual necessário.`);
-    return { ok: false, running: false, message: `Limite de ${MAX_RESTARTS} restarts atingido. Chame POST /bot/reset-restarts` };
-  }
-
-  const backendPath = path.join(__dirname, 'backend.js');
-  const startedAt   = Date.now();
-
-  console.log(`[WD] 🚀 Iniciando backend.js (motivo: ${reason}, tentativa #${_restartCount + 1})`);
-
-  try {
-    _backendProcess = spawn(process.execPath, [backendPath, '--port', String(BACKEND_PORT)], {
-      cwd  : __dirname,
-      stdio: ['ignore', 'pipe', 'pipe'],
-      env: { ...process.env, PORT: String(BACKEND_PORT) } // Passa variáveis de ambiente
-    });
-  } catch (err) {
-    console.error('[WD] Falha ao spawnar backend.js:', err.message);
-    return { ok: false, running: false, message: err.message };
-  }
-
-  _restartCount++;
-  _lastRestartAt = Date.now();
-
-  _backendProcess.stdout.on('data', d => process.stdout.write(`[backend] ${d}`));
-  _backendProcess.stderr.on('data', d => process.stderr.write(`[backend:err] ${d}`));
-
-  _backendProcess.on('exit', (code, signal) => {
-    const uptime = Date.now() - startedAt;
-    console.warn(`[WD] ⚠️  backend.js encerrado — código:${code} signal:${signal} uptime:${uptime}ms`);
-    _backendProcess = null;
-
-    if (!_autoStartEnabled) return;
-
-    // Se morreu rápido demais = crash grave
-    if (uptime < MIN_UPTIME_MS) {
-      console.error(`[WD] ❌ backend.js morreu em ${uptime}ms — possível crash na inicialização`);
-    }
-
-    // Agenda reinicialização com backoff
-    const delay = backoffMs(_restartCount);
-    console.log(`[WD] ⏳ Reagendando backend.js em ${delay}ms...`);
-    setTimeout(() => startBackendProcess('auto-restart'), delay);
-  });
-
-  return { ok: true, running: true, pid: _backendProcess.pid };
-}
-
-// ─── API de reparo e health check ────────────────────────────────────────────
+// Rota de health check
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    backendRunning: !!_backendProcess,
-    restartCount: _restartCount,
-    port: port,
-    timestamp: new Date().toISOString()
+  res.json({
+    status: 'ok',
+    backendRunning: false,  // serverless, sem processos filhos
+    restartCount: 0,
+    timestamp: new Date().toISOString(),
+    note: 'Modo serverless (Netlify Functions) - código único'
+  });
+});
+
+// Webhook MoonPay
+app.post('/api/moonpay-webhook', (req, res) => {
+  const signature = req.headers['moonpay-signature'];
+  console.log('[MoonPay] Webhook recebido', { signature: signature?.substring(0, 20) });
+
+  if (!signature) {
+    return res.status(400).json({ error: 'Missing signature' });
+  }
+
+  if (moonpayWebhookSecret && req.rawBody) {
+    const expectedSignature = crypto
+      .createHmac('sha256', moonpayWebhookSecret)
+      .update(req.rawBody)
+      .digest('base64');
+
+    if (signature !== expectedSignature) {
+      console.error('[MoonPay] ❌ Assinatura inválida');
+      return res.status(401).json({ error: 'Invalid signature' });
+    }
+    console.log('[MoonPay] ✅ Assinatura verificada');
+  }
+
+  const event = req.body;
+  console.log('[MoonPay] Evento:', event.type);
+
+  if (event.type === 'transaction_created') {
+    console.log('[MoonPay] Transação criada:', event.data);
+  } else if (event.type === 'transaction_updated') {
+    console.log('[MoonPay] Transação atualizada:', event.data);
+  }
+
+  res.json({ received: true });
+});
+
+// Reparo (não aplicável em serverless, mas mantido para compatibilidade)
+app.post('/api/repair', (req, res) => {
+  console.log('[API] 🔧 Reparo solicitado (modo serverless - sem efeito)');
+  res.status(501).json({
+    error: 'Repair not available in serverless environment',
+    message: 'Use /bot/reset-restarts to reset counters'
+  });
+});
+
+// Reset de contador de restarts (simulado)
+app.post('/bot/reset-restarts', (req, res) => {
+  console.log('[API] 🔄 Reset restarts (simulado)');
+  res.json({
+    ok: true,
+    restartCount: 0,
+    autoStartEnabled: true,
+    note: 'Netlify serverless mode – no persistent process'
+  });
+});
+
+// Fallback para qualquer outra rota: serve o octocookie.html (SPA)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(publicPath, 'octocookie.html'));
+});
+
+// Exporta o handler para a Netlify Function
+exports.handler = serverless(app);    timestamp: new Date().toISOString()
   });
 });
 
